@@ -9,7 +9,7 @@ public class emnity extends GameEngine {
 
     boolean jump, left, right;
     final double GRAVITY = 9.81;
-    final double ACCELERATION = 1;
+    final double ACCELERATION = 10.0;
 
     /* --- PLAYER --- */
     double playerX, playerY; // position of player.
@@ -26,9 +26,16 @@ public class emnity extends GameEngine {
         playerX += playerVX*dt;
         playerY += playerVY*dt;
 
-        if (left) { playerVX = -100; } 
-        if (right) { playerVX = 100; }
-        if (!left && !right) { playerVX = 0; }
+        if (left) { 
+            if (playerVX > -200) { playerVX-= ACCELERATION; } 
+        } 
+        if (right) { 
+            if (playerVX < 200) { playerVX+= ACCELERATION; }
+        }
+        if (!left && !right) { 
+            if (playerVX < 0 && playerVX != 0) { playerVX+= ACCELERATION; } 
+            if (playerVX > 0 && playerVX != 0) { playerVX-= ACCELERATION; }
+        }
     }
 
     public void drawPlayer() {
