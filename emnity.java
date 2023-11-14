@@ -7,25 +7,55 @@ public class emnity extends GameEngine {
         createGame(new emnity(), 60);
     }
 
-    /* --- INTERACT FUNCTIONS --- */
     boolean jump, left, right;
+    final double GRAVITY = 9.81;
+    final double ACCELERATION = 1;
+
+    /* --- PLAYER --- */
+    double playerX, playerY; // position of player.
+    double playerVX, playerVY; // velocity of player.
+
+    public void initPlayer() {
+        playerX = width()/2;
+        playerY = 450;
+        playerVX = 0;
+        playerVY = 0;
+    }
+
+    public void updatePlayer(double dt) {
+        playerX += playerVX*dt;
+        playerY += playerVY*dt;
+
+        if (left) { playerVX = -100; } 
+        if (right) { playerVX = 100; }
+        if (!left && !right) { playerVX = 0; }
+    }
+
+    public void drawPlayer() {
+        changeColor(white);
+        drawSolidCircle(playerX, playerY, 10);
+    }
 
     @Override
     public void init() {
         jump = false;
         left = false;
         right = false;
+        initPlayer();
+
+        System.out.println(width() + " " + height());
     }
 
     @Override
     public void update(double dt) {
-       //..
+       updatePlayer(dt);
     }
 
     @Override
     public void paintComponent() {
         changeBackgroundColor(black);
         clearBackground(width(), height());
+        drawPlayer();
     }
     
     @Override
