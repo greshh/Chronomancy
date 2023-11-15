@@ -1,17 +1,17 @@
+// "Emnity" - main game program
+// Greshka Lao
+
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 
 public class emnity extends GameEngine {
 
-    public static void main(String args[]) {
-        createGame(new emnity(), 60);
-    }
-
     boolean jump, left, right, down;
     int jumpCount;
 
-    final double GROUND = 450.0;
-    
+    /* --- EDIT THESE VALUES AS NEEDED TO CHANGE MOVEMENT --- */
+    final int FPS = 60; // frames per second;
+    final double GROUND = 450.0; // y-coordinate of ground.
     final double GRAVITY = 40.0;
     final double HORIZONTAL_ACCELERATION = 50.0;
     final double HORIZONTAL_DECELERATION = 20.0;
@@ -20,7 +20,12 @@ public class emnity extends GameEngine {
     final double MAX_VERTICAL_VELOCITY = -600;
     final double MAX_HORIZONTAL_VELOCITY = 300;
 
-    /* --- PLAYER --- */
+    public static void main(String args[]) {
+        createGame(new emnity(), FPS); 
+    }
+
+    /* ----- PLAYER ----- */
+    
     double playerX, playerY; // position of player.
     double playerVX, playerVY; // velocity of player.
 
@@ -58,6 +63,8 @@ public class emnity extends GameEngine {
         drawSolidCircle(playerX, playerY, 10);
     }
 
+    /* ----- GAME ----- */
+
     @Override
     public void init() {
         jump = false;
@@ -67,7 +74,7 @@ public class emnity extends GameEngine {
         jumpCount = 0;
         initPlayer();
 
-        System.out.println(width() + " " + height());
+        System.out.println(width() + " " + height()); // DEBUG
     }
 
     @Override
@@ -81,13 +88,16 @@ public class emnity extends GameEngine {
         clearBackground(width(), height());
         drawPlayer();
         
-        // DEBUG.
+        // start DEBUG
         changeColor(white);
         if (jump) { drawBoldText(5, 25, "jump " + jumpCount); }
         if (left) { drawBoldText(5, 60, "left"); }
         if (right) { drawBoldText(5, 90, "right"); }
         if (down) { drawBoldText(5, 120, "down"); }
+        // end DEBUG
     }
+
+    /* ----- EVENTS ----- */
     
     @Override
     public void keyPressed(KeyEvent e) 
@@ -111,27 +121,13 @@ public class emnity extends GameEngine {
         if (e.getKeyCode() == KeyEvent.VK_DOWN) { down = false; }
     }
 
-    @Override
+    /* --- ABSTRACT METHODS NOT NEEDED --- */
     public void keyTyped(KeyEvent e) {}
-
-    @Override
     public void mouseClicked(MouseEvent e) {}
-
-    @Override
     public void mousePressed(MouseEvent e) {}
-
-    @Override
     public void mouseReleased(MouseEvent e) {}
-
-    @Override
     public void mouseEntered(MouseEvent e) {}
-
-    @Override
     public void mouseExited(MouseEvent e) {}
-
-    @Override
     public void mouseDragged(MouseEvent e) {}
-
-    @Override
     public void mouseMoved(MouseEvent e) {}
 }
