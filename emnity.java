@@ -8,14 +8,17 @@ public class emnity extends GameEngine {
     }
 
     boolean jump, left, right, down;
+    int jumpCount;
 
     final double GROUND = 450.0;
     
-    final double GRAVITY = 9.81;
-    final double HORIZONTAL_ACCELERATION = 10.0;
+    final double GRAVITY = 40.0;
+    final double HORIZONTAL_ACCELERATION = 50.0;
+    final double HORIZONTAL_DECELERATION = 20.0;
     final double VERTICAL_ACCELERATION = 10.0;
-    final double MAX_VERTICAL_VELOCITY = 300;
-    final double MAX_HORIZONTAL_VELOCITY = 200;
+    final double VERTICAL_DECELERATION = 50.0;
+    final double MAX_VERTICAL_VELOCITY = -600;
+    final double MAX_HORIZONTAL_VELOCITY = 300;
 
     /* --- PLAYER --- */
     double playerX, playerY; // position of player.
@@ -32,17 +35,20 @@ public class emnity extends GameEngine {
         playerX += playerVX*dt;
         playerY += playerVY*dt;
 
-        if (left) { if (playerVX > -MAX_HORIZONTAL_VELOCITY) { playerVX-= ACCELERATION; } } 
-        if (right) { if (playerVX < MAX_HORIZONTAL_VELOCITY) { playerVX+= ACCELERATION; } }
+        if (left) { if (playerVX > -MAX_HORIZONTAL_VELOCITY) { playerVX-= HORIZONTAL_ACCELERATION; } } 
+        if (right) { if (playerVX < MAX_HORIZONTAL_VELOCITY) { playerVX+= HORIZONTAL_ACCELERATION; } }
         if (!left && !right) { 
-            if (playerVX < 0 && playerVX != 0) { playerVX+= ACCELERATION; } 
-            if (playerVX > 0 && playerVX != 0) { playerVX-= ACCELERATION; }
+            if (playerVX < 0 && playerVX != 0) { playerVX+= HORIZONTAL_DECELERATION; } 
+            if (playerVX > 0 && playerVX != 0) { playerVX-= HORIZONTAL_DECELERATION; }
         }
+        if (down && playerY < GROUND) { playerVY+= VERTICAL_DECELERATION; }
 
         if (jump) {
             if (playerY > GROUND) {
                 playerY = GROUND;
+                playerVY = 0;
                 jump = false;
+                jumpCount = 0;
             } else { playerVY+= GRAVITY; }
         }
     }
@@ -58,6 +64,7 @@ public class emnity extends GameEngine {
         left = false;
         right = false;
         down = false;
+        jumpCount = 0;
         initPlayer();
 
         System.out.println(width() + " " + height());
@@ -73,6 +80,13 @@ public class emnity extends GameEngine {
         changeBackgroundColor(black);
         clearBackground(width(), height());
         drawPlayer();
+        
+        // DEBUG.
+        changeColor(white);
+        if (jump) { drawBoldText(5, 25, "jump " + jumpCount); }
+        if (left) { drawBoldText(5, 60, "left"); }
+        if (right) { drawBoldText(5, 90, "right"); }
+        if (down) { drawBoldText(5, 120, "down"); }
     }
     
     @Override
@@ -80,10 +94,12 @@ public class emnity extends GameEngine {
     {
         if (e.getKeyCode() == KeyEvent.VK_LEFT) { left = true; }  
         if (e.getKeyCode() == KeyEvent.VK_RIGHT) { right = true; }
+        if (e.getKeyCode() == KeyEvent.VK_DOWN) { down = true; }
         if (e.getKeyCode() == KeyEvent.VK_SPACE) { 
-            if (!jump) {
+            if (!jump || jumpCount < 2) {
                 jump = true; 
-                playerYV = MAX_VERTICAL_VELOCITY;
+                playerVY = MAX_VERTICAL_VELOCITY;
+                jumpCount++;
             }
         }
     }
@@ -92,6 +108,7 @@ public class emnity extends GameEngine {
     public void keyReleased(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_LEFT) { left = false; }  
         if (e.getKeyCode() == KeyEvent.VK_RIGHT) { right = false; }
+        if (e.getKeyCode() == KeyEvent.VK_DOWN) { down = false; }
     }
 
     @Override
