@@ -10,8 +10,9 @@ public class emnity extends GameEngine {
     boolean jump, left, right, down;
     int jumpCount;
 
-    final double GROUND = 450.0;
-    
+    /* --- EDIT THESE VALUES AS NEEDED TO CHANGE MOVEMENT --- */
+    final static int FPS = 60; // frames per second;
+    final double GROUND = 450.0; // y-coordinate of ground.
     final double GRAVITY = 40.0;
     final double HORIZONTAL_ACCELERATION = 50.0;
     final double HORIZONTAL_DECELERATION = 20.0;
