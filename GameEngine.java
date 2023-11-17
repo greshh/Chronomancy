@@ -72,10 +72,12 @@ public abstract class GameEngine implements KeyListener, MouseListener, MouseMot
         mHeight = height;
 
         mFrame.setSize(width, height);
-        mFrame.setLocation(200, 200);
+        mFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+        mFrame.setLocation(0, 0);
         mFrame.setTitle("Window");
         mFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         mFrame.add(mPanel);
+        //mFrame.setUndecorated(true);
         mFrame.setVisible(true);
 
         mPanel.setDoubleBuffered(true);
@@ -138,25 +140,23 @@ public abstract class GameEngine implements KeyListener, MouseListener, MouseMot
     // Main Game function
     // -------------------------------------------------------
 
-    public GameEngine() {
-        this(500, 500);
-    }
-
     // GameEngine Constructor
-    public GameEngine(int width, int height) {
+    public GameEngine() {
         // Create graphics transform stack
         mTransforms = new Stack<AffineTransform>();
 
+        Dimension size = Toolkit.getDefaultToolkit().getScreenSize();
+
         // Set default width, height
-        mWidth = width;
-        mHeight = height;
+        mWidth = (int)size.getWidth();
+        mHeight = (int)size.getHeight();
 
         // Create window
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
                 // Create the window
-                setupWindow(width, height);
+                setupWindow(mWidth, mHeight);
             }
         });
     }
