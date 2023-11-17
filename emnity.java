@@ -1,3 +1,4 @@
+import java.awt.RenderingHints.Key;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -8,7 +9,8 @@ public class Emnity extends GameEngine {
         createGame(new Emnity(), 60);
     }
 
-    boolean jump, left, right, down;
+    boolean space, left, right, down, shift;
+    boolean jump, dash;
     int jumpCount;
 
     /* --- EDIT THESE VALUES AS NEEDED TO CHANGE MOVEMENT --- */
@@ -19,7 +21,7 @@ public class Emnity extends GameEngine {
     final double HORIZONTAL_DECELERATION = 40.0;
     final double GROUND_POUND_ACCELERATION = 70.0;
     final double MAX_VERTICAL_VELOCITY = -600;
-    final double MAX_HORIZONTAL_VELOCITY = 400;
+    final double MAX_HORIZONTAL_VELOCITY = 400; // without dash;
 
     /* --- HELP MENU --- */
     boolean helpMenu;
@@ -43,16 +45,22 @@ public class Emnity extends GameEngine {
             if (player.vX > -MAX_HORIZONTAL_VELOCITY) { 
                 player.vX-= HORIZONTAL_ACCELERATION; 
             } 
+            if (player.vX < -400 && !dash) {player.vX = -400; }
+            player.direction = -1;
         } 
         if (right) { 
             if (player.vX < 0) { player.vX+= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; } 
             if (player.vX < MAX_HORIZONTAL_VELOCITY) { 
                 player.vX+= HORIZONTAL_ACCELERATION; 
             } 
+            if (player.vX > 400 && !dash) {player.vX = 400; }
+            player.direction = 1;
         }
         if (!left && !right) { 
-            if (player.vX < 0 && player.vX != 0) { player.vX+= HORIZONTAL_DECELERATION; } 
-            if (player.vX > 0 && player.vX != 0) { player.vX-= HORIZONTAL_DECELERATION; }
+            if (player.vX < 0 && player.direction < 0) { player.vX+= HORIZONTAL_DECELERATION; } // left
+            if (player.vX > 0 && player.direction > 0) { player.vX-= HORIZONTAL_DECELERATION; } // right
+            if (player.vX > -40 && player.vX < 40) { player.vX = 0; }
+            if (player.vX == 0) { player.direction = 0; }
         }
         if (down && player.y < GROUND) { player.vY+= GROUND_POUND_ACCELERATION; }
 
@@ -63,6 +71,22 @@ public class Emnity extends GameEngine {
                 jump = false;
                 jumpCount = 0;
             } else { player.vY+= GRAVITY; }
+        }
+
+        if (dash) {
+            if (player.direction < 0) { // left
+                if (player.vX >= -MAX_HORIZONTAL_VELOCITY) { 
+                    dash = false; 
+                } else { 
+                    player.vX+= 50.0; 
+                }
+            } else if (player.direction > 0) { // right
+                if (player.vX <= MAX_HORIZONTAL_VELOCITY) {
+                    dash = false;
+                } else {
+                    player.vX-= 50.0;
+                }
+            }
         }
     }
 
@@ -88,12 +112,16 @@ public class Emnity extends GameEngine {
     @Override
     public void init() 
     {
-        jump = false;
+        space = false;
         left = false;
         right = false;
         down = false;
+        shift = false;
         jumpCount = 0;
 
+        jump = false;
+        dash = false;
+        
         helpMenu = false;
 
         player = new Character(50.0, 70.0, (mWidth/2), GROUND, 0, 0);
@@ -103,8 +131,6 @@ public class Emnity extends GameEngine {
     @Override
     public void update(double dt) {
         if (!helpMenu) { updatePlayer(dt); }
-        else { //... 
-        }
     }
 
     @Override
@@ -114,36 +140,50 @@ public class Emnity extends GameEngine {
         drawPlayer();
         drawPlatforms();
 
+        drawLine(0, GROUND, mWidth, GROUND); // DEBUG;
+
+        drawBoldText(5, 45, player.vX + "");
+        drawBoldText(5, 90, player.direction + "");
+        drawBoldText(5, 115, "dash: " + dash);
+
         if (helpMenu) {
             changeColor(white);
             drawSolidRectangle(((mWidth/2)-150), ((mHeight/2)-200), 300, 400);
             changeColor(black);
-            drawSolidRectangle(buttonX, buttonY, buttonW, buttonH);
+            drawRectangle(buttonX, buttonY, buttonW, buttonH);
         }
-        
-        drawLine(0, GROUND, mWidth, GROUND); // DEBUG;
     }
     
     @Override
     public void keyPressed(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_ESCAPE) { helpMenu = !helpMenu; } // stops the program.
-        if (e.getKeyCode() == KeyEvent.VK_LEFT) { left = true; }  
-        if (e.getKeyCode() == KeyEvent.VK_RIGHT) { right = true; }
-        if (e.getKeyCode() == KeyEvent.VK_DOWN) { down = true; }
-        if (e.getKeyCode() == KeyEvent.VK_SPACE) { 
-            if ((jump && jumpCount < 2) || (!jump && player.y == GROUND)) {
+        if (e.getKeyCode() == KeyEvent.VK_ESCAPE) { helpMenu = !helpMenu; }
+        if (e.getKeyCode() == KeyEvent.VK_LEFT || e.getKeyCode() == KeyEvent.VK_A) { left = true; }  
+        if (e.getKeyCode() == KeyEvent.VK_RIGHT || e.getKeyCode() == KeyEvent.VK_D) { right = true; }
+        if (e.getKeyCode() == KeyEvent.VK_DOWN || e.getKeyCode() == KeyEvent.VK_S) { down = true; }
+        if (e.getKeyCode() == KeyEvent.VK_SPACE || e.getKeyCode() == KeyEvent.VK_W) { 
+            if (jumpCount < 2 && !space) {
                 jump = true; 
                 player.vY = MAX_VERTICAL_VELOCITY;
                 jumpCount++;
             }
+            space = true;
+        }
+        if (e.getKeyCode() == KeyEvent.VK_SHIFT || e.getKeyCode() == KeyEvent.VK_L) {
+            if (!shift) {
+                dash = true;
+                player.vX = 1000*player.direction;
+            }
+            shift = true;
         }
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_LEFT) { left = false; }  
-        if (e.getKeyCode() == KeyEvent.VK_RIGHT) { right = false; }
-        if (e.getKeyCode() == KeyEvent.VK_DOWN) { down = false; }
+        if (e.getKeyCode() == KeyEvent.VK_LEFT || e.getKeyCode() == KeyEvent.VK_A) { left = false; }  
+        if (e.getKeyCode() == KeyEvent.VK_RIGHT || e.getKeyCode() == KeyEvent.VK_D) { right = false; }
+        if (e.getKeyCode() == KeyEvent.VK_DOWN || e.getKeyCode() == KeyEvent.VK_S) { down = false; }
+        if (e.getKeyCode() == KeyEvent.VK_SPACE || e.getKeyCode() == KeyEvent.VK_W) { space = false; }
+        if (e.getKeyCode() == KeyEvent.VK_SHIFT || e.getKeyCode() == KeyEvent.VK_L) { shift = false; }
     }
 
     @Override
