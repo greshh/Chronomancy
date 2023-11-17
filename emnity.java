@@ -1,10 +1,10 @@
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 
-public class emnity extends GameEngine {
+public class Emnity extends GameEngine {
 
     public static void main(String args[]) {
-        createGame(new emnity(), 60);
+        createGame(new Emnity(), 60);
     }
 
     boolean jump, left, right, down;
@@ -14,12 +14,12 @@ public class emnity extends GameEngine {
     final static int FPS = 60; // frames per second;
     final double GROUND = 450.0; // y-coordinate of ground.
     final double GRAVITY = 40.0;
-    final double HORIZONTAL_ACCELERATION = 50.0;
-    final double HORIZONTAL_DECELERATION = 20.0;
+    final double HORIZONTAL_ACCELERATION = 80.0;
+    final double HORIZONTAL_DECELERATION = 40.0;
     final double VERTICAL_ACCELERATION = 10.0;
-    final double VERTICAL_DECELERATION = 50.0;
+    final double VERTICAL_DECELERATION = 70.0;
     final double MAX_VERTICAL_VELOCITY = -600;
-    final double MAX_HORIZONTAL_VELOCITY = 300;
+    final double MAX_HORIZONTAL_VELOCITY = 400;
 
     /* --- PLAYER --- */
     double playerX, playerY; // position of player.
@@ -36,8 +36,22 @@ public class emnity extends GameEngine {
         playerX += playerVX*dt;
         playerY += playerVY*dt;
 
-        if (left) { if (playerVX > -MAX_HORIZONTAL_VELOCITY) { playerVX-= HORIZONTAL_ACCELERATION; } } 
-        if (right) { if (playerVX < MAX_HORIZONTAL_VELOCITY) { playerVX+= HORIZONTAL_ACCELERATION; } }
+        if (left) { 
+            if (playerVX > 0) { 
+                playerVX-= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; 
+            } 
+            if (playerVX > -MAX_HORIZONTAL_VELOCITY) { 
+                playerVX-= HORIZONTAL_ACCELERATION; 
+            } 
+        } 
+        if (right) { 
+            if (playerVX < 0) { 
+                playerVX+= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; 
+            } 
+            if (playerVX < MAX_HORIZONTAL_VELOCITY) { 
+                playerVX+= HORIZONTAL_ACCELERATION; 
+            } 
+        }
         if (!left && !right) { 
             if (playerVX < 0 && playerVX != 0) { playerVX+= HORIZONTAL_DECELERATION; } 
             if (playerVX > 0 && playerVX != 0) { playerVX-= HORIZONTAL_DECELERATION; }
