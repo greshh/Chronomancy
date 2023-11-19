@@ -1,8 +1,6 @@
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 
 public class Emnity extends GameEngine {
 
@@ -12,6 +10,7 @@ public class Emnity extends GameEngine {
 
     boolean space, left, right, down, shift;
     boolean jump, dash;
+
     int jumpCount;
 
     /* --- EDIT THESE VALUES AS NEEDED TO CHANGE MOVEMENT --- */
@@ -20,11 +19,12 @@ public class Emnity extends GameEngine {
     final double GRAVITY = 40.0;
     final double HORIZONTAL_ACCELERATION = 80.0;
     final double HORIZONTAL_DECELERATION = 40.0;
-    final double GROUND_POUND_ACCELERATION = 70.0;
+    final double GROUND_POUND_ACCELERATION = 100.0;
     final double MAX_VERTICAL_VELOCITY = -600;
     final double MAX_HORIZONTAL_VELOCITY = 400; // without dash;
 
     /* --- HELP MENU --- */
+    boolean debug;
     boolean helpMenu;
 
     // exit button;
@@ -35,26 +35,15 @@ public class Emnity extends GameEngine {
 
     /* --- PLATFORMS --- */
     ArrayList<Platform> platforms = new ArrayList<>();
-    Platform currentPlatform;
 
     public void initPlatforms() {
-        platforms.add(new Platform((mWidth-350), (GROUND-100), 300, 20));
-        platforms.add(new Platform(100, (GROUND-150), 300, 20));
-        currentPlatform = null;
+        platforms.add(new Platform((mWidth-350), (GROUND-200), 300, 100));
     }
-
+    
     public void drawPlatforms() {
         changeColor(white);
         if (!platforms.isEmpty()) { 
             for (Platform p:platforms) { drawSolidRectangle(p.x, p.y, p.width, p.height); }
-        }
-    }
-
-    // sorts the platforms in descending y-coordinate order. 
-    public class PlatformComparator implements Comparator<Platform> {
-        @Override
-        public int compare(Platform o1, Platform o2) {
-            return (int)o2.y-(int)o1.y;
         }
     }
 
@@ -63,20 +52,48 @@ public class Emnity extends GameEngine {
 
     double floorY;
 
+    double lastvalue;
+    double steps;
+    
+    public boolean checkCollision(Platform p) {
+        if (player.y > GROUND 
+            || (player.y > p.y && player.y-player.height < p.y+p.height 
+            && player.x > p.x && player.x-player.width < p.x+p.width)) {
+            return true;
+        } else { 
+            return false; 
+        }
+    }
+
     public void updatePlayer(double dt) 
     {
+        //HORIZONTAL MOVEMENT;
+        steps = Math.abs(player.vX);
+        // this code makes the player move until the object is collided, instead of going inside the object and moving out like it was before;
+        for (int i = (int)steps; i > 0; i-- ) {
+            lastvalue = player.x;
+            player.x += player.vX/steps*dt;
 
-        player.x += player.vX*dt;
-        player.y += player.vY*dt;
+            // detecting for collisions;
+            if (checkCollision(platforms.get(0)) == true) {
+                player.x = lastvalue;
+                player.vX = 0;
+            }
+        }
 
-        Collections.sort(platforms, new PlatformComparator());
-        if (!platforms.isEmpty()) {
-            for (Platform p:platforms) {
-                if (p.y<player.y && (p.x<=player.x || p.x+p.width>=player.x+player.width) && player.vY > 0) {
-                    currentPlatform = p;
-                    break;
+        // VERTICAL MOVEMENT;
+        steps = Math.abs(player.vY);
+        for (int i = (int)steps; i > 0; i-- ) {
+            lastvalue = player.y;
+            player.y += player.vY/steps*dt;
+            
+            if (checkCollision(platforms.get(0)) == true) {
+                player.y = lastvalue;
+                if (player.vY > 0) {
+                    jump = false;
+                    jumpCount = 0;
                 }
-                currentPlatform = null;
+                player.vY = 0;
             }
         }
 
@@ -103,17 +120,9 @@ public class Emnity extends GameEngine {
             if (player.vX == 0) { player.direction = 0; }
         }
 
-        double ground = GROUND;
-        if (currentPlatform != null) { ground = currentPlatform.y; }
-        if (jump) {
-            if (player.y > ground) {
-                player.y = ground;
-                player.vY = 0;
-                jump = false;
-                jumpCount = 0;
-            } else { player.vY+= GRAVITY; }
-        }
-        if (down && player.y < ground) { player.vY+= GROUND_POUND_ACCELERATION; }
+        player.vY+= GRAVITY;
+        
+        if (down) { player.vY+= GROUND_POUND_ACCELERATION; }
 
         if (dash) {
             if (player.direction < 0) { // left
@@ -149,7 +158,8 @@ public class Emnity extends GameEngine {
 
         jump = false;
         dash = false;
-        
+
+        debug = false;
         helpMenu = false;
 
         player = new Character(50.0, 70.0, (mWidth/2), GROUND, 0, 0);
@@ -172,8 +182,17 @@ public class Emnity extends GameEngine {
 
         drawLine(0, GROUND, mWidth, GROUND); // DEBUG;
 
-        drawBoldText(5, 45, player.vX + "");
-        drawBoldText(5, 90, "platforms: " + platforms.size());
+        /* press TAB to see the debug menu */
+        if (debug) {
+            drawBoldText(5, 45, "player.vX: " + player.vX + "");
+            drawBoldText(5, 90, "player.vY: " + player.vY + "");
+            drawBoldText(5, 135, "platforms: " + platforms.size());
+            drawBoldText(5, 180, "player.x: " + player.x + "");
+            drawBoldText(5, 225, "player.y: " + player.y + "");
+            drawBoldText(5, 270, "jump? " + jump + "");
+            drawBoldText(5, 315, "insidewall? " + checkCollision(platforms.get(0)) + "");
+            drawBoldText(5, 360, "jumpCount: " + jumpCount + "");
+        }
 
         if (helpMenu) {
             changeColor(white);
@@ -191,9 +210,11 @@ public class Emnity extends GameEngine {
         if (e.getKeyCode() == KeyEvent.VK_DOWN || e.getKeyCode() == KeyEvent.VK_S) { down = true; }
         if (e.getKeyCode() == KeyEvent.VK_SPACE || e.getKeyCode() == KeyEvent.VK_W) { 
             if (jumpCount < 2 && !space) {
+                if ((player.vY > 40.0 && jump) || player.vY <= 40.0) { 
+                    player.vY = MAX_VERTICAL_VELOCITY;
+                    jumpCount++;
+                }
                 jump = true; 
-                player.vY = MAX_VERTICAL_VELOCITY;
-                jumpCount++;
             }
             space = true;
         }
@@ -204,6 +225,7 @@ public class Emnity extends GameEngine {
             }
             shift = true;
         }
+        if (e.getKeyCode() == KeyEvent.VK_TAB) { debug = !debug; }  
     }
 
     @Override
