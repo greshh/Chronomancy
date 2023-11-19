@@ -1,5 +1,5 @@
 public class Platform {
-    double x, y; // from the top-left of the platform.
+    double x, y; // coordinates from the top-left corner.
     double width, height; // from the point ^(x, y).
 
     public Platform(double x, double y, double width, double height) {

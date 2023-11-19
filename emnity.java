@@ -1,7 +1,8 @@
-import java.awt.RenderingHints.Key;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
 public class Emnity extends GameEngine {
 
@@ -32,13 +33,52 @@ public class Emnity extends GameEngine {
     int buttonW = 220; // width;
     int buttonH = 50; // height;
 
+    /* --- PLATFORMS --- */
+    ArrayList<Platform> platforms = new ArrayList<>();
+    Platform currentPlatform;
+
+    public void initPlatforms() {
+        platforms.add(new Platform((mWidth-350), (GROUND-100), 300, 20));
+        platforms.add(new Platform(100, (GROUND-150), 300, 20));
+        currentPlatform = null;
+    }
+
+    public void drawPlatforms() {
+        changeColor(white);
+        if (!platforms.isEmpty()) { 
+            for (Platform p:platforms) { drawSolidRectangle(p.x, p.y, p.width, p.height); }
+        }
+    }
+
+    // sorts the platforms in descending y-coordinate order. 
+    public class PlatformComparator implements Comparator<Platform> {
+        @Override
+        public int compare(Platform o1, Platform o2) {
+            return (int)o2.y-(int)o1.y;
+        }
+    }
+
     /* --- PLAYER --- */
     Character player;
 
+    double floorY;
+
     public void updatePlayer(double dt) 
     {
+
         player.x += player.vX*dt;
         player.y += player.vY*dt;
+
+        Collections.sort(platforms, new PlatformComparator());
+        if (!platforms.isEmpty()) {
+            for (Platform p:platforms) {
+                if (p.y<player.y && (p.x<=player.x || p.x+p.width>=player.x+player.width) && player.vY > 0) {
+                    currentPlatform = p;
+                    break;
+                }
+                currentPlatform = null;
+            }
+        }
 
         if (left) { 
             if (player.vX > 0) { player.vX-= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; } 
@@ -62,16 +102,18 @@ public class Emnity extends GameEngine {
             if (player.vX > -40 && player.vX < 40) { player.vX = 0; }
             if (player.vX == 0) { player.direction = 0; }
         }
-        if (down && player.y < GROUND) { player.vY+= GROUND_POUND_ACCELERATION; }
 
+        double ground = GROUND;
+        if (currentPlatform != null) { ground = currentPlatform.y; }
         if (jump) {
-            if (player.y > GROUND) {
-                player.y = GROUND;
+            if (player.y > ground) {
+                player.y = ground;
                 player.vY = 0;
                 jump = false;
                 jumpCount = 0;
             } else { player.vY+= GRAVITY; }
         }
+        if (down && player.y < ground) { player.vY+= GROUND_POUND_ACCELERATION; }
 
         if (dash) {
             if (player.direction < 0) { // left
@@ -91,22 +133,8 @@ public class Emnity extends GameEngine {
     }
 
     public void drawPlayer() {
-        changeColor(white);
+        changeColor(white); 
         drawRectangle((player.x-player.width), (player.y-player.height), player.width, player.height);
-    }
-
-    /* --- PLATFORMS --- */
-    ArrayList<Platform> platforms = new ArrayList<>();
-
-    public void initPlatforms() {
-        platforms.add(new Platform((mWidth-350), (GROUND-100), 300, 20));
-    }
-
-    public void drawPlatforms() {
-        changeColor(white);
-        if (!platforms.isEmpty()) { 
-            for (Platform p:platforms) { drawSolidRectangle(p.x, p.y, p.width, p.height); }
-        }
     }
 
     @Override
@@ -130,7 +158,9 @@ public class Emnity extends GameEngine {
 
     @Override
     public void update(double dt) {
-        if (!helpMenu) { updatePlayer(dt); }
+        if (!helpMenu) { 
+            updatePlayer(dt); 
+        }
     }
 
     @Override
@@ -143,8 +173,7 @@ public class Emnity extends GameEngine {
         drawLine(0, GROUND, mWidth, GROUND); // DEBUG;
 
         drawBoldText(5, 45, player.vX + "");
-        drawBoldText(5, 90, player.direction + "");
-        drawBoldText(5, 115, "dash: " + dash);
+        drawBoldText(5, 90, "platforms: " + platforms.size());
 
         if (helpMenu) {
             changeColor(white);

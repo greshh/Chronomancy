@@ -3,7 +3,7 @@ import java.awt.image.BufferedImage;
 public class Character {
     BufferedImage spritesheet;
     double height, width;
-    double x, y;
+    double x, y; // coordinates from top-left corner.
     double vX, vY;
     int direction; // =0 if neutral, <0 if right, >0 if left;
     int hp;
