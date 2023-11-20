@@ -8,7 +8,8 @@ public class Emnity extends GameEngine {
         createGame(new Emnity(), 60);
     }
 
-    boolean space, left, right, down, shift;
+    boolean space, left, right, down, shift, f, q;
+    boolean leftClick, rightClick;
     boolean jump, dash;
 
     int jumpCount;
@@ -38,6 +39,7 @@ public class Emnity extends GameEngine {
 
     public void initPlatforms() {
         platforms.add(new Platform((mWidth-350), (GROUND-200), 300, 100));
+        platforms.add(new Platform(100, 250, 300, 100));
     }
     
     public void drawPlatforms() {
@@ -75,9 +77,11 @@ public class Emnity extends GameEngine {
             player.x += player.vX/steps*dt;
 
             // detecting for collisions;
-            if (checkCollision(platforms.get(0)) == true) {
-                player.x = lastvalue;
-                player.vX = 0;
+            for (Platform p:platforms) {
+                if (checkCollision(p) == true) {
+                    player.x = lastvalue;
+                    player.vX = 0;
+                }
             }
         }
 
@@ -87,17 +91,20 @@ public class Emnity extends GameEngine {
             lastvalue = player.y;
             player.y += player.vY/steps*dt;
             
-            if (checkCollision(platforms.get(0)) == true) {
-                player.y = lastvalue;
-                if (player.vY > 0) {
-                    jump = false;
-                    jumpCount = 0;
+            for (Platform p:platforms) {
+                if (checkCollision(p) == true) {
+                    player.y = lastvalue;
+                    if (player.vY > 0) {
+                        jump = false;
+                        jumpCount = 0;
+                    }
+                    player.vY = 0;
                 }
-                player.vY = 0;
             }
         }
 
         if (left) { 
+            player.state = 1; // change state to running;
             if (player.vX > 0) { player.vX-= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; } 
             if (player.vX > -MAX_HORIZONTAL_VELOCITY) { 
                 player.vX-= HORIZONTAL_ACCELERATION; 
@@ -106,6 +113,7 @@ public class Emnity extends GameEngine {
             player.direction = -1;
         } 
         if (right) { 
+            player.state = 1; // change state to running;
             if (player.vX < 0) { player.vX+= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; } 
             if (player.vX < MAX_HORIZONTAL_VELOCITY) { 
                 player.vX+= HORIZONTAL_ACCELERATION; 
@@ -117,7 +125,10 @@ public class Emnity extends GameEngine {
             if (player.vX < 0 && player.direction < 0) { player.vX+= HORIZONTAL_DECELERATION; } // left
             if (player.vX > 0 && player.direction > 0) { player.vX-= HORIZONTAL_DECELERATION; } // right
             if (player.vX > -40 && player.vX < 40) { player.vX = 0; }
-            if (player.vX == 0) { player.direction = 0; }
+            if (player.vX == 0) { 
+                player.direction = 0; 
+                player.state = 0; // change state to idle;
+            }
         }
 
         player.vY+= GRAVITY;
@@ -142,7 +153,19 @@ public class Emnity extends GameEngine {
     }
 
     public void drawPlayer() {
-        changeColor(white); 
+        switch (player.state) {
+            case 1: // running;
+                changeColor(red);
+                break;
+            case 2: // light sword attack;
+                changeColor(blue);
+                break;
+            case 3: // heavy sword attack;
+                changeColor(purple);
+                break;
+            default:
+                changeColor(white);
+        }
         drawRectangle((player.x-player.width), (player.y-player.height), player.width, player.height);
     }
 
@@ -154,10 +177,14 @@ public class Emnity extends GameEngine {
         right = false;
         down = false;
         shift = false;
-        jumpCount = 0;
+        f = false;
+        q = false;
+        leftClick = false;
+        rightClick = false;
 
         jump = false;
         dash = false;
+        jumpCount = 0;
 
         debug = false;
         helpMenu = false;
@@ -209,11 +236,10 @@ public class Emnity extends GameEngine {
         if (e.getKeyCode() == KeyEvent.VK_RIGHT || e.getKeyCode() == KeyEvent.VK_D) { right = true; }
         if (e.getKeyCode() == KeyEvent.VK_DOWN || e.getKeyCode() == KeyEvent.VK_S) { down = true; }
         if (e.getKeyCode() == KeyEvent.VK_SPACE || e.getKeyCode() == KeyEvent.VK_W) { 
+            if (player.vY > 150 && !jump) { jumpCount = 1; }
             if (jumpCount < 2 && !space) {
-                if ((player.vY > 40.0 && jump) || player.vY <= 40.0) { 
-                    player.vY = MAX_VERTICAL_VELOCITY;
-                    jumpCount++;
-                }
+                player.vY = MAX_VERTICAL_VELOCITY;
+                jumpCount++;
                 jump = true; 
             }
             space = true;
@@ -226,6 +252,14 @@ public class Emnity extends GameEngine {
             shift = true;
         }
         if (e.getKeyCode() == KeyEvent.VK_TAB) { debug = !debug; }  
+        if (e.getKeyCode() == KeyEvent.VK_F) { 
+            f = true;
+            player.state = 4;
+        }
+        if (e.getKeyCode() == KeyEvent.VK_Q) {
+            q = true;
+            player.state = 5;
+        }
     }
 
     @Override
@@ -235,6 +269,8 @@ public class Emnity extends GameEngine {
         if (e.getKeyCode() == KeyEvent.VK_DOWN || e.getKeyCode() == KeyEvent.VK_S) { down = false; }
         if (e.getKeyCode() == KeyEvent.VK_SPACE || e.getKeyCode() == KeyEvent.VK_W) { space = false; }
         if (e.getKeyCode() == KeyEvent.VK_SHIFT || e.getKeyCode() == KeyEvent.VK_L) { shift = false; }
+        if (e.getKeyCode() == KeyEvent.VK_F) { f = false; }
+        if (e.getKeyCode() == KeyEvent.VK_Q) { q = false; }
     }
 
     @Override
@@ -248,7 +284,10 @@ public class Emnity extends GameEngine {
     }
 
     @Override
-    public void mousePressed(MouseEvent e) {}
+    public void mousePressed(MouseEvent e) {
+        if (e.getButton() == MouseEvent.BUTTON1 && !helpMenu) { player.state = 2; } // left click
+        if (e.getButton() == MouseEvent.BUTTON3 && !helpMenu) { player.state = 3; } // right click
+    }
 
     @Override
     public void mouseReleased(MouseEvent e) {}

@@ -6,9 +6,10 @@ public class Character {
     double x, y; // coordinates from top-left corner.
     double vX, vY;
     int direction; // =0 if neutral, <0 if right, >0 if left;
+    int state; // 0 idle, 1 running, 2 light sword attack, 3 heavy sword attack; 
     int hp;
 
-    public Character(double width, double height, double x, double y, double vX, double xY) {
+    public Character(double width, double height, double x, double y, double vX, double vY) {
         this.width = width;
         this.height = height;
         this.x = x;
@@ -16,6 +17,7 @@ public class Character {
         this.vX = vX;
         this.vY = vY;
         direction = 0;
+        state = 0;
         hp = 100;
     }
 }
