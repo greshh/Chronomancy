@@ -12,7 +12,11 @@ public class Emnity extends GameEngine {
     boolean leftClick, rightClick;
     boolean jump, dash;
 
-    int jumpCount;
+    int jumpCount, dashCount;
+
+    double xPush; // the amount the frame gets shifted by as a result of the player moving out of screen.
+    final double frameXR = mWidth-(mWidth/8); // the right x-coordinate where the frame starts moving.
+    final double frameXL = mWidth/8; // the left x-coordinate where the frame starts moving.
 
     /* --- EDIT THESE VALUES AS NEEDED TO CHANGE MOVEMENT --- */
     final static int FPS = 60; // frames per second;
@@ -26,26 +30,35 @@ public class Emnity extends GameEngine {
 
     /* --- HELP MENU --- */
     boolean debug;
-    boolean helpMenu;
+    boolean menu;
+    boolean help;
+
+    final int buttonX = (mWidth/2)-110; // x-coordinate from top-left corner;
+    final int buttonW = 220; // width;
+    final int buttonH = 50; // height;
+
+    // help button;
+    int helpButtonY = (mHeight/2)-100;
 
     // exit button;
-    int buttonX = (mWidth/2)-110; // x-coordinate from top-left corner;
-    int buttonY = (mHeight/2)-100; // y-coordinate from top-left corner;
-    int buttonW = 220; // width;
-    int buttonH = 50; // height;
+    int exitButtonY = mHeight/2; // y-coordinate from top-left corner;
 
     /* --- PLATFORMS --- */
     ArrayList<Platform> platforms = new ArrayList<>();
 
     public void initPlatforms() {
-        platforms.add(new Platform((mWidth-350), (GROUND-200), 300, 100));
-        platforms.add(new Platform(100, 250, 300, 100));
+        int platformWidth = 300;
+        int platformHeight = 50;
+        platforms.add(new Platform(900, 500, platformWidth, platformHeight));
+        platforms.add(new Platform(100, 400, platformWidth, platformHeight));
+        platforms.add(new Platform(1100, 200, platformWidth, platformHeight));
+        platforms.add(new Platform(1500, 400, platformWidth, platformHeight));
     }
-    
+
     public void drawPlatforms() {
         changeColor(white);
         if (!platforms.isEmpty()) { 
-            for (Platform p:platforms) { drawSolidRectangle(p.x, p.y, p.width, p.height); }
+            for (Platform p:platforms) { drawSolidRectangle(p.x+xPush, p.y, p.width, p.height); }
         }
     }
 
@@ -60,7 +73,7 @@ public class Emnity extends GameEngine {
     public boolean checkCollision(Platform p) {
         if (player.y > GROUND 
             || (player.y > p.y && player.y-player.height < p.y+p.height 
-            && player.x > p.x && player.x-player.width < p.x+p.width)) {
+            && player.x > p.x+xPush && player.x-player.width < p.x+xPush+p.width)) {
             return true;
         } else { 
             return false; 
@@ -85,6 +98,15 @@ public class Emnity extends GameEngine {
             }
         }
 
+        if (player.x+player.width > frameXR) { 
+            xPush+= (frameXR-player.x-player.width);
+            player.x = frameXR-player.width;
+        } 
+        if (player.x < frameXL) {
+            if (xPush < 0) { xPush+= (frameXL-player.x); }
+            player.x = frameXL;
+        }
+
         // VERTICAL MOVEMENT;
         steps = Math.abs(player.vY);
         for (int i = (int)steps; i > 0; i-- ) {
@@ -97,10 +119,15 @@ public class Emnity extends GameEngine {
                     if (player.vY > 0) {
                         jump = false;
                         jumpCount = 0;
+                        dashCount = 0;
                     }
                     player.vY = 0;
                 }
             }
+        }
+
+        if (player.x-player.width <= 0 && xPush == 0) {
+            player.x = player.width;
         }
 
         if (left) { 
@@ -185,9 +212,12 @@ public class Emnity extends GameEngine {
         jump = false;
         dash = false;
         jumpCount = 0;
+        dashCount = 0;
+
+        xPush = 0;
 
         debug = false;
-        helpMenu = false;
+        menu = false;
 
         player = new Character(50.0, 70.0, (mWidth/2), GROUND, 0, 0);
         initPlatforms();
@@ -195,7 +225,7 @@ public class Emnity extends GameEngine {
 
     @Override
     public void update(double dt) {
-        if (!helpMenu) { 
+        if (!menu) { 
             updatePlayer(dt); 
         }
     }
@@ -211,27 +241,28 @@ public class Emnity extends GameEngine {
 
         /* press TAB to see the debug menu */
         if (debug) {
-            drawBoldText(5, 45, "player.vX: " + player.vX + "");
-            drawBoldText(5, 90, "player.vY: " + player.vY + "");
-            drawBoldText(5, 135, "platforms: " + platforms.size());
+            drawBoldText(5, 45, "dashCount: " + dashCount + "");
+            drawBoldText(5, 90, "xPush: " + xPush + "");
+            // drawBoldText(5, 135, "platforms: " + platforms.size());
             drawBoldText(5, 180, "player.x: " + player.x + "");
-            drawBoldText(5, 225, "player.y: " + player.y + "");
-            drawBoldText(5, 270, "jump? " + jump + "");
-            drawBoldText(5, 315, "insidewall? " + checkCollision(platforms.get(0)) + "");
-            drawBoldText(5, 360, "jumpCount: " + jumpCount + "");
+            // drawBoldText(5, 225, "player.y: " + player.y + "");
+            drawBoldText(5, 270, "dash? " + dash + "");
+            // drawBoldText(5, 315, "insidewall? " + checkCollision(platforms.get(0)) + "");
+            // drawBoldText(5, 360, "jumpCount: " + jumpCount + "");
         }
 
-        if (helpMenu) {
+        if (menu) {
             changeColor(white);
             drawSolidRectangle(((mWidth/2)-150), ((mHeight/2)-200), 300, 400);
+            //drawBoldText((mWidth/2)-50, GRAVITY, null);
             changeColor(black);
-            drawRectangle(buttonX, buttonY, buttonW, buttonH);
+            drawRectangle(buttonX, exitButtonY, buttonW, buttonH);
         }
     }
     
     @Override
     public void keyPressed(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_ESCAPE) { helpMenu = !helpMenu; }
+        if (e.getKeyCode() == KeyEvent.VK_ESCAPE) { menu = !menu; }
         if (e.getKeyCode() == KeyEvent.VK_LEFT || e.getKeyCode() == KeyEvent.VK_A) { left = true; }  
         if (e.getKeyCode() == KeyEvent.VK_RIGHT || e.getKeyCode() == KeyEvent.VK_D) { right = true; }
         if (e.getKeyCode() == KeyEvent.VK_DOWN || e.getKeyCode() == KeyEvent.VK_S) { down = true; }
@@ -246,8 +277,15 @@ public class Emnity extends GameEngine {
         }
         if (e.getKeyCode() == KeyEvent.VK_SHIFT || e.getKeyCode() == KeyEvent.VK_L) {
             if (!shift) {
-                dash = true;
-                player.vX = 1000*player.direction;
+                if ((jump && dashCount<1) || !jump) {
+                    if (!dash) {
+                        dash = true;
+                        player.vX = 1000*player.direction;
+                    }
+                    if (jump) {
+                        dashCount++;
+                    }
+                }
             }
             shift = true;
         }
@@ -277,16 +315,23 @@ public class Emnity extends GameEngine {
     public void keyTyped(KeyEvent e) {}
 
     @Override
-    public void mouseClicked(MouseEvent e) {
-        if (helpMenu && (e.getX() >= buttonX && e.getX() <= buttonX+buttonW) && (e.getY() >= buttonY && e.getY() <= buttonY+buttonH)) {
+    public void mouseClicked(MouseEvent e) 
+    {
+        // if help button is clicked.
+        if (menu && (e.getX() >= buttonX && e.getX() <= buttonX+buttonW) && (e.getY() >= helpButtonY && e.getY() <= helpButtonY+buttonH)) {
+            help = true;
+        } 
+
+        // if exit button is clicked.
+        if (menu && (e.getX() >= buttonX && e.getX() <= buttonX+buttonW) && (e.getY() >= exitButtonY && e.getY() <= exitButtonY+buttonH)) {
             System.exit(10);
         } 
     }
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if (e.getButton() == MouseEvent.BUTTON1 && !helpMenu) { player.state = 2; } // left click
-        if (e.getButton() == MouseEvent.BUTTON3 && !helpMenu) { player.state = 3; } // right click
+        if (e.getButton() == MouseEvent.BUTTON1 && !menu) { player.state = 2; } // left click
+        if (e.getButton() == MouseEvent.BUTTON3 && !menu) { player.state = 3; } // right click
     }
 
     @Override
