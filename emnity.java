@@ -28,7 +28,7 @@ public class Emnity extends GameEngine {
     final double MAX_VERTICAL_VELOCITY = -600;
     final double MAX_HORIZONTAL_VELOCITY = 400; // without dash;
 
-    /* --- HELP MENU --- */
+    /* --- MENU --- */
     boolean debug;
     boolean menu;
     boolean help;
@@ -41,7 +41,17 @@ public class Emnity extends GameEngine {
     int helpButtonY = (mHeight/2)-100;
 
     // exit button;
-    int exitButtonY = mHeight/2; // y-coordinate from top-left corner;
+    int exitButtonY = mHeight/2-25; // y-coordinate from top-left corner;
+
+    public void drawMenu() {
+        changeColor(white);
+        drawSolidRectangle(((mWidth/2)-150), ((mHeight/2)-200), 300, 400);
+        changeColor(black);
+        drawRectangle(buttonX, helpButtonY, buttonW, buttonH);
+        drawBoldText((mWidth/2)-35, helpButtonY+35, "HELP");
+        drawRectangle(buttonX, exitButtonY, buttonW, buttonH);
+        drawBoldText((mWidth/2)-30, exitButtonY+35, "EXIT");
+    }
 
     /* --- PLATFORMS --- */
     ArrayList<Platform> platforms = new ArrayList<>();
@@ -70,6 +80,7 @@ public class Emnity extends GameEngine {
     double lastvalue;
     double steps;
     
+    // checking collisions for platforms.
     public boolean checkCollision(Platform p) {
         if (player.y > GROUND 
             || (player.y > p.y && player.y-player.height < p.y+p.height 
@@ -80,9 +91,20 @@ public class Emnity extends GameEngine {
         }
     }
 
+
+    // checking collisions for enemies.
+    public boolean checkCollision(Character enemy) {
+        if ((player.y > enemy.y && player.y-player.height < enemy.y+enemy.height 
+            && player.x > enemy.x+xPush && player.x-player.width < enemy.x+xPush+enemy.width)) {
+            return true;
+        } else { 
+            return false; 
+        }
+    }
+
     public void updatePlayer(double dt) 
     {
-        //HORIZONTAL MOVEMENT;
+        // HORIZONTAL MOVEMENT;
         steps = Math.abs(player.vX);
         // this code makes the player move until the object is collided, instead of going inside the object and moving out like it was before;
         for (int i = (int)steps; i > 0; i-- ) {
@@ -180,21 +202,87 @@ public class Emnity extends GameEngine {
     }
 
     public void drawPlayer() {
-        switch (player.state) {
-            case 1: // running;
-                changeColor(red);
-                break;
-            case 2: // light sword attack;
-                changeColor(blue);
-                break;
-            case 3: // heavy sword attack;
-                changeColor(purple);
-                break;
-            default:
-                changeColor(white);
-        }
+        changeColor(white);
         drawRectangle((player.x-player.width), (player.y-player.height), player.width, player.height);
     }
+
+    /* --- ENEMY --- */
+    ArrayList<Enemy> enemies = new ArrayList<>();
+
+    double enemyY = (GROUND-70.0);
+
+    public void initEnemy() {
+        enemies.add(new Enemy(player.width, player.height, 1100.00, enemyY, 0, 0, 2.0));
+        enemies.add(new Moving(player.width, player.height, 300.00, enemyY, 75.00, 0, 2.0, 150.0));
+        //enemies.add(new Following(player.width, player.height, 1500.00, enemyY, 200.00, 0));
+    }
+
+    public void drawEnemy() {
+        changeColor(white);
+        for (Character e:enemies) {
+            if (e.hp > 0) { 
+                drawRectangle(e.x+xPush, e.y, e.width, e.height); 
+            } else { e.hp = 0; }
+        }
+    }
+
+    public void updateEnemy(double dt, Enemy e) {
+        if (e.getClass().getName() == "Moving") {
+                // if the moving enemy reaches its maximum distance to the RIGHT, it waits for the waiting period before resuming.
+                if (e.x >= ((Moving)e).originalX+((Moving)e).maxDistance) {
+                    if (((Moving)e).waitTime < ((Moving)e).waitPeriod) {
+                        e.direction = 0;
+                        ((Moving)e).waitTime+= dt;
+                    } else {
+                        ((Moving)e).waitTime = 0;
+                        e.direction = -1;
+                    }
+                // if the moving enemy reaches its maximum distance to the LEFT, it waits for the waiting period before resuming.
+                } else if (e.x <= ((Moving)e).originalX-((Moving)e).maxDistance) {
+                    if (((Moving)e).waitTime < ((Moving)e).waitPeriod) {
+                        e.direction = 0;
+                        ((Moving)e).waitTime+= dt;
+                    } else {
+                        ((Moving)e).waitTime = 0;
+                        e.direction = 1;
+                    }
+                }
+            }
+        // else if (e.getClass().getName() == "Following") {
+        //     double distance = e.x-player.x;
+        //     if (distance < 0) { 
+        //         e.direction = 1;
+        //     } else if (distance > 0) {
+        //         e.direction = -1;
+        //     }
+        // }
+        if (e.direction > 0) { e.x+= e.vX*dt; }
+        else if (e.direction < 0) { e.x-= e.vX*dt; }
+            
+        if (checkCollision(e)) {
+            if (e.waitTime < e.waitPeriod) {
+                e.waitTime+= dt;
+            } else {
+                player.hp-= 0.00000001;
+                e.waitTime = 0;
+                e.newWaitPeriod();
+            }
+        }
+    }
+
+    /* --- HEALTH BAR --- */
+    double healthBarW = (mWidth/2)-100.0;
+    double healthBarH = 25;
+
+    // currently only for player HP;
+    public void drawHealthBar() { 
+        changeColor(red);
+        drawSolidRectangle(5, 60, (player.hp*0.01)*healthBarW, healthBarH);
+        changeColor(white);
+        drawRectangle(5, 60, healthBarW, healthBarH);
+    }
+
+    /* --- GAME --- */
 
     @Override
     public void init() 
@@ -219,7 +307,8 @@ public class Emnity extends GameEngine {
         debug = false;
         menu = false;
 
-        player = new Character(50.0, 70.0, (mWidth/2), GROUND, 0, 0);
+        player = new Player(50.0, 70.0, (mWidth/2), GROUND, 0, 0);
+        initEnemy();
         initPlatforms();
     }
 
@@ -227,6 +316,17 @@ public class Emnity extends GameEngine {
     public void update(double dt) {
         if (!menu) { 
             updatePlayer(dt); 
+            for (Enemy e:enemies) {
+                updateEnemy(dt, e);
+                if (checkCollision(e) && !e.isHit && (q || leftClick || rightClick)) { 
+                    e.isHit = true;
+                    if (leftClick) { e.hp-= 10; } // for light sword attack;
+                    if (rightClick) { e.hp-= 30; } // for heavy sword attack;
+                    if (q) { e.hp-= 50; } // for ultimate;
+                } else if (e.isHit && !q && !leftClick && !rightClick) {
+                    e.isHit = false;
+                }
+            }
         }
     }
 
@@ -236,6 +336,8 @@ public class Emnity extends GameEngine {
         clearBackground(width(), height());
         drawPlayer();
         drawPlatforms();
+        drawEnemy();
+        drawHealthBar();
 
         drawLine(0, GROUND, mWidth, GROUND); // DEBUG;
 
@@ -247,19 +349,27 @@ public class Emnity extends GameEngine {
             drawBoldText(5, 180, "player.x: " + player.x + "");
             // drawBoldText(5, 225, "player.y: " + player.y + "");
             drawBoldText(5, 270, "dash? " + dash + "");
-            // drawBoldText(5, 315, "insidewall? " + checkCollision(platforms.get(0)) + "");
-            // drawBoldText(5, 360, "jumpCount: " + jumpCount + "");
+            drawBoldText(5, 315, "enemy 0: " + enemies.get(0).waitPeriod + "");
+            drawBoldText(5, 360, "enemy 1: " + enemies.get(1).waitPeriod + "");
+            if (menu) {
+                changeColor(red);
+                drawLine(mWidth/2, 0, mWidth/2, mHeight);
+            }
         }
 
-        if (menu) {
-            changeColor(white);
-            drawSolidRectangle(((mWidth/2)-150), ((mHeight/2)-200), 300, 400);
-            //drawBoldText((mWidth/2)-50, GRAVITY, null);
-            changeColor(black);
-            drawRectangle(buttonX, exitButtonY, buttonW, buttonH);
+        changeColor(white);
+        drawBoldText(mWidth-300, 45, "Player HP: " + player.hp);
+        for (int i = 0; i < enemies.size(); i++) {
+            if (enemies.get(i).x+xPush > 0 && enemies.get(i).x+enemies.get(i).width+xPush < mWidth && enemies.get(i).hp > 0) {
+                drawBoldText(mWidth-300, 45+((i+1)*30), "Enemy " + i + " HP: " + enemies.get(i).hp);
+            }
         }
+
+        if (menu) { drawMenu(); }
     }
     
+    /* --- ACTIONS --- */
+
     @Override
     public void keyPressed(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) { menu = !menu; }
@@ -330,12 +440,15 @@ public class Emnity extends GameEngine {
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if (e.getButton() == MouseEvent.BUTTON1 && !menu) { player.state = 2; } // left click
-        if (e.getButton() == MouseEvent.BUTTON3 && !menu) { player.state = 3; } // right click
+        if (e.getButton() == MouseEvent.BUTTON1 && !menu) { leftClick = true; } // left click
+        if (e.getButton() == MouseEvent.BUTTON3 && !menu) { rightClick = true; } // right click
     }
 
     @Override
-    public void mouseReleased(MouseEvent e) {}
+    public void mouseReleased(MouseEvent e) {
+        if (e.getButton() == MouseEvent.BUTTON1 && !menu) { leftClick = false; } // left click
+        if (e.getButton() == MouseEvent.BUTTON3 && !menu) { rightClick = false; } // right click
+    }
 
     @Override
     public void mouseEntered(MouseEvent e) {}

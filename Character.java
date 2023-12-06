@@ -2,11 +2,12 @@ import java.awt.image.BufferedImage;
 
 public class Character {
     BufferedImage spritesheet;
+    boolean isHit;
     double height, width;
-    double x, y; // coordinates from top-left corner.
+    double x, y; // coordinates from top-left corner, excluding xPush;
     double vX, vY;
     int direction; // =0 if neutral, <0 if right, >0 if left;
-    int state; // 0 idle, 1 running, 2 light sword attack, 3 heavy sword attack; 
+    int state; 
     int hp;
 
     public Character(double width, double height, double x, double y, double vX, double vY) {
@@ -19,5 +20,6 @@ public class Character {
         direction = 0;
         state = 0;
         hp = 100;
+        isHit = false;
     }
 }
