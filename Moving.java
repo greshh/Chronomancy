@@ -5,8 +5,8 @@ public class Moving extends Enemy
     double waitTime; // in seconds;
     double waitPeriod; // in seconds;
 
-    public Moving(double width, double height, double x, double y, double vX, double vY, double maxWaitPeriod, double maxDistance) {
-        super(width, height, x, y, vX, vY, maxWaitPeriod);
+    public Moving(double width, double height, double x, double y, double vX, double vY, double maxWaitPeriod, double maxDistance, Hitbox hitbox) {
+        super(width, height, x, y, vX, vY, maxWaitPeriod, hitbox);
         this.originalX = x;
         this.maxDistance = maxDistance;
         direction = 1;

@@ -4,11 +4,11 @@ public class Enemy extends Character
     double waitPeriod; // current period between attacks on player;
     double maxWaitPeriod; // maximum period between attacks on player;
 
-    public Enemy(double width, double height, double x, double y, double vX, double vY, double maxWaitPeriod) {
-        super(width, height, x, y, vX, vY);
+    public Enemy(double width, double height, double x, double y, double vX, double vY, double maxWaitPeriod, Hitbox hitbox) {
+        super(width, height, x, y, vX, vY, hitbox);
         waitTime = 0;
         newWaitPeriod();
     }
 
-    public void newWaitPeriod() { waitPeriod = Math.random()*maxWaitPeriod; }
+    public void newWaitPeriod() { waitPeriod = maxWaitPeriod*Math.random(); }
 }

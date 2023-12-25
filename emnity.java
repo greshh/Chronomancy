@@ -1,5 +1,6 @@
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 
 public class Emnity extends GameEngine {
@@ -27,7 +28,7 @@ public class Emnity extends GameEngine {
     final double GROUND_POUND_ACCELERATION = 100.0;
     final double MAX_VERTICAL_VELOCITY = -600;
     final double MAX_HORIZONTAL_VELOCITY = 400; // without dash;
-
+  
     /* --- MENU --- */
     boolean debug;
     boolean menu;
@@ -79,23 +80,29 @@ public class Emnity extends GameEngine {
 
     double lastvalue;
     double steps;
+
+    BufferedImage idleImage = (BufferedImage)(loadImage("idle.png"));
+    BufferedImage runImage = (BufferedImage)(loadImage("run.png"));
+    BufferedImage jumpImage = (BufferedImage)(loadImage("jump.png"));
+    BufferedImage landImage = (BufferedImage)(loadImage("land.png"));
+    BufferedImage[] dashImage = new BufferedImage[2];
+    BufferedImage stopImage = (BufferedImage)(loadImage("stop.png"));
     
     // checking collisions for platforms.
     public boolean checkCollision(Platform p) {
-        if (player.y > GROUND 
-            || (player.y > p.y && player.y-player.height < p.y+p.height 
-            && player.x > p.x+xPush && player.x-player.width < p.x+xPush+p.width)) {
+        if (player.y > GROUND
+            || (player.hitbox.y > p.y && player.hitbox.y-player.hitbox.height < p.y+p.height 
+            && player.hitbox.x > p.x+xPush && player.hitbox.x-player.hitbox.width < p.x+xPush+p.width)) {
             return true;
         } else { 
             return false; 
         }
     }
 
-
     // checking collisions for enemies.
     public boolean checkCollision(Character enemy) {
-        if ((player.y > enemy.y && player.y-player.height < enemy.y+enemy.height 
-            && player.x > enemy.x+xPush && player.x-player.width < enemy.x+xPush+enemy.width)) {
+        if ((player.hitbox.y > enemy.hitbox.y && player.hitbox.y-player.hitbox.height < enemy.hitbox.y+enemy.hitbox.height 
+            && player.hitbox.x > enemy.hitbox.x+xPush && player.hitbox.x-player.hitbox.width < enemy.hitbox.x+xPush+enemy.hitbox.width)) {
             return true;
         } else { 
             return false; 
@@ -105,9 +112,10 @@ public class Emnity extends GameEngine {
     public void updatePlayer(double dt) 
     {
         // HORIZONTAL MOVEMENT;
+        player.hitbox.x = player.x-player.width+65.0; // update hitbox position according to position of the player.
         steps = Math.abs(player.vX);
         // this code makes the player move until the object is collided, instead of going inside the object and moving out like it was before;
-        for (int i = (int)steps; i > 0; i-- ) {
+        for (int i = (int)steps; i > 0; i--) {
             lastvalue = player.x;
             player.x += player.vX/steps*dt;
 
@@ -115,6 +123,7 @@ public class Emnity extends GameEngine {
             for (Platform p:platforms) {
                 if (checkCollision(p) == true) {
                     player.x = lastvalue;
+                    player.hitbox.x = player.x-player.width+65.0;
                     player.vX = 0;
                 }
             }
@@ -130,14 +139,17 @@ public class Emnity extends GameEngine {
         }
 
         // VERTICAL MOVEMENT;
+        player.hitbox.y = player.y-player.height+15.0; // update hitbox position according to position of the player.
         steps = Math.abs(player.vY);
-        for (int i = (int)steps; i > 0; i-- ) {
+        for (int i = (int)steps; i > 0; i--) {
             lastvalue = player.y;
             player.y += player.vY/steps*dt;
+            if (player.vY != 40) { player.hitbox.y += player.vY/steps*dt; }
             
             for (Platform p:platforms) {
                 if (checkCollision(p) == true) {
                     player.y = lastvalue;
+                    player.hitbox.y = player.y-player.height+15.0;
                     if (player.vY > 0) {
                         jump = false;
                         jumpCount = 0;
@@ -158,7 +170,7 @@ public class Emnity extends GameEngine {
             if (player.vX > -MAX_HORIZONTAL_VELOCITY) { 
                 player.vX-= HORIZONTAL_ACCELERATION; 
             } 
-            if (player.vX < -400 && !dash) {player.vX = -400; }
+            if (player.vX < -400 && !dash) { player.vX = -400; }
             player.direction = -1;
         } 
         if (right) { 
@@ -185,6 +197,7 @@ public class Emnity extends GameEngine {
         if (down) { player.vY+= GROUND_POUND_ACCELERATION; }
 
         if (dash) {
+            player.state = 2;
             if (player.direction < 0) { // left
                 if (player.vX >= -MAX_HORIZONTAL_VELOCITY) { 
                     dash = false; 
@@ -203,7 +216,32 @@ public class Emnity extends GameEngine {
 
     public void drawPlayer() {
         changeColor(white);
-        drawRectangle((player.x-player.width), (player.y-player.height), player.width, player.height);
+        switch (player.state) {
+            case 0: // idle;
+                drawImage(idleImage, (player.x-player.width), (player.y-player.height), player.width, player.height);
+                break;
+            case 1: // run;
+                drawImage(runImage, (player.x-player.width), (player.y-player.height), player.width, player.height);
+                break;
+            case 2: // dash;
+                if (player.vX > 0) {
+                    drawImage(dashImage[0], (player.x-player.width), (player.y-player.height), player.width, player.height);
+                } else {
+                    drawImage(dashImage[1], (player.x-player.width), (player.y-player.height), player.width, player.height);
+                }
+                break;
+            case 3: // jump/land;
+                if (player.vY > 0) {
+                    drawImage(jumpImage, (player.x-player.width), (player.y-player.height), player.width, player.height);
+                } else {
+                    drawImage(landImage, (player.x-player.width), (player.y-player.height), player.width, player.height);
+                }
+                break;
+            default:
+                break;
+        }
+        // draw hitbox;
+        drawRectangle(player.hitbox.x, player.hitbox.y, player.hitbox.width, player.hitbox.height);
     }
 
     /* --- ENEMY --- */
@@ -212,8 +250,8 @@ public class Emnity extends GameEngine {
     double enemyY = (GROUND-70.0);
 
     public void initEnemy() {
-        enemies.add(new Enemy(player.width, player.height, 1100.00, enemyY, 0, 0, 2.0));
-        enemies.add(new Moving(player.width, player.height, 300.00, enemyY, 75.00, 0, 2.0, 150.0));
+        //enemies.add(new Enemy(player.width, player.height, 1100.00, enemyY, 0.0, 0.0, 0.0, new Hitbox(0,0,0,0)));
+        //enemies.add(new Moving(player.width, player.height, 300.00, enemyY, 75.00, 0, 2.0, 150.0, new Hitbox(0,0,0,0)));
         //enemies.add(new Following(player.width, player.height, 1500.00, enemyY, 200.00, 0));
     }
 
@@ -307,7 +345,10 @@ public class Emnity extends GameEngine {
         debug = false;
         menu = false;
 
-        player = new Player(50.0, 70.0, (mWidth/2), GROUND, 0, 0);
+        player = new Player(150.0, 150.0, (double)(mWidth/2), GROUND, 0.0, 0.0, new Hitbox((double)(mWidth/2)-85.0,GROUND-135.0,25.0,135.0));
+        dashImage[0] = (BufferedImage)(loadImage("dashf.png"));
+        dashImage[1] = (BufferedImage)(loadImage("dashb.png"));
+        
         initEnemy();
         initPlatforms();
     }
@@ -343,14 +384,14 @@ public class Emnity extends GameEngine {
 
         /* press TAB to see the debug menu */
         if (debug) {
-            drawBoldText(5, 45, "dashCount: " + dashCount + "");
+            drawBoldText(5, 45, "player direction: " + player.direction + "");
             drawBoldText(5, 90, "xPush: " + xPush + "");
-            // drawBoldText(5, 135, "platforms: " + platforms.size());
+            drawBoldText(5, 135, "player vY: " + player.vY);
             drawBoldText(5, 180, "player.x: " + player.x + "");
             // drawBoldText(5, 225, "player.y: " + player.y + "");
             drawBoldText(5, 270, "dash? " + dash + "");
-            drawBoldText(5, 315, "enemy 0: " + enemies.get(0).waitPeriod + "");
-            drawBoldText(5, 360, "enemy 1: " + enemies.get(1).waitPeriod + "");
+            //drawBoldText(5, 315, "enemy 0: " + enemies.get(0).waitPeriod + "");
+            //drawBoldText(5, 360, "enemy 1: " + enemies.get(1).waitPeriod + "");
             if (menu) {
                 changeColor(red);
                 drawLine(mWidth/2, 0, mWidth/2, mHeight);
@@ -381,7 +422,8 @@ public class Emnity extends GameEngine {
             if (jumpCount < 2 && !space) {
                 player.vY = MAX_VERTICAL_VELOCITY;
                 jumpCount++;
-                jump = true; 
+                jump = true;
+                player.state = 3;
             }
             space = true;
         }
