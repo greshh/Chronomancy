@@ -112,7 +112,14 @@ public class Emnity extends GameEngine {
     public void updatePlayer(double dt) 
     {
         // HORIZONTAL MOVEMENT;
-        player.hitbox.x = player.x-player.width+65.0; // update hitbox position according to position of the player.
+
+        /* update hitbox position according to position of the player. */
+        if (player.direction >= 0) {
+            player.hitbox.x = player.x-player.width+60.0;
+        } else {
+            player.hitbox.x = player.x-player.width+65.0;
+        }
+
         steps = Math.abs(player.vX);
         // this code makes the player move until the object is collided, instead of going inside the object and moving out like it was before;
         for (int i = (int)steps; i > 0; i--) {
@@ -123,7 +130,7 @@ public class Emnity extends GameEngine {
             for (Platform p:platforms) {
                 if (checkCollision(p) == true) {
                     player.x = lastvalue;
-                    player.hitbox.x = player.x-player.width+65.0;
+                    player.hitbox.x = player.hitbox.x-player.hitbox.width+65.0;
                     player.vX = 0;
                 }
             }
@@ -149,7 +156,7 @@ public class Emnity extends GameEngine {
             for (Platform p:platforms) {
                 if (checkCollision(p) == true) {
                     player.y = lastvalue;
-                    player.hitbox.y = player.y-player.height+15.0;
+                    //player.hitbox.y = player.hitbox.y-player.hitbox.height;
                     if (player.vY > 0) {
                         jump = false;
                         jumpCount = 0;
@@ -160,12 +167,17 @@ public class Emnity extends GameEngine {
             }
         }
 
+        /* if the player runs out of the screen, it stays at the edge and the scene moves by xPush. */
         if (player.x-player.width <= 0 && xPush == 0) {
             player.x = player.width;
         }
 
         if (left) { 
-            player.state = 1; // change state to running;
+            if (jump) { 
+                player.state = 3;
+            } else {
+                player.state = 1;
+            }
             if (player.vX > 0) { player.vX-= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; } 
             if (player.vX > -MAX_HORIZONTAL_VELOCITY) { 
                 player.vX-= HORIZONTAL_ACCELERATION; 
@@ -174,7 +186,11 @@ public class Emnity extends GameEngine {
             player.direction = -1;
         } 
         if (right) { 
-            player.state = 1; // change state to running;
+            if (jump) { 
+                player.state = 3;
+            } else {
+                player.state = 1;
+            }
             if (player.vX < 0) { player.vX+= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; } 
             if (player.vX < MAX_HORIZONTAL_VELOCITY) { 
                 player.vX+= HORIZONTAL_ACCELERATION; 
@@ -186,10 +202,7 @@ public class Emnity extends GameEngine {
             if (player.vX < 0 && player.direction < 0) { player.vX+= HORIZONTAL_DECELERATION; } // left
             if (player.vX > 0 && player.direction > 0) { player.vX-= HORIZONTAL_DECELERATION; } // right
             if (player.vX > -40 && player.vX < 40) { player.vX = 0; }
-            if (player.vX == 0) { 
-                player.direction = 0; 
-                player.state = 0; // change state to idle;
-            }
+            if (player.vX == 0) { player.state = 0; } // change state to idle;
         }
 
         player.vY+= GRAVITY;
@@ -216,32 +229,58 @@ public class Emnity extends GameEngine {
 
     public void drawPlayer() {
         changeColor(white);
+        /* draws the player according to its state (listed) and then is determined by which direction the player was/is facing. */
         switch (player.state) {
             case 0: // idle;
-                drawImage(idleImage, (player.x-player.width), (player.y-player.height), player.width, player.height);
+                if (player.direction >= 0) { 
+                    drawImage(idleImage, (player.x-player.width), (player.y-player.height), player.width, player.height); 
+                } else {
+                    drawImage(idleImage, player.x, (player.y-player.height), -player.width, player.height);
+                }
                 break;
             case 1: // run;
-                drawImage(runImage, (player.x-player.width), (player.y-player.height), player.width, player.height);
+                if (player.direction >= 0) {
+                    drawImage(runImage, (player.x-player.width), (player.y-player.height), player.width, player.height);
+                } else {
+                    drawImage(runImage, player.x, (player.y-player.height), -player.width, player.height);
+                }
                 break;
             case 2: // dash;
-                if (player.vX > 0) {
-                    drawImage(dashImage[0], (player.x-player.width), (player.y-player.height), player.width, player.height);
+            /* if the player is dashing forward, dashf.png is used. else, dashing backwards = dashb.png. */
+                if (player.direction >= 0) {
+                    if (player.vX > 0) {
+                        drawImage(dashImage[0], (player.x-player.width), (player.y-player.height), player.width, player.height);
+                    } else {
+                        drawImage(dashImage[1], (player.x-player.width), (player.y-player.height), player.width, player.height);
+                    }
                 } else {
-                    drawImage(dashImage[1], (player.x-player.width), (player.y-player.height), player.width, player.height);
+                    if (player.vX > 0) {
+                        drawImage(dashImage[0], player.x, (player.y-player.height), -player.width, player.height);
+                    } else {
+                        drawImage(dashImage[1], player.x, (player.y-player.height), -player.width, player.height);
+                    }
                 }
                 break;
             case 3: // jump/land;
-                if (player.vY > 0) {
-                    drawImage(jumpImage, (player.x-player.width), (player.y-player.height), player.width, player.height);
+            /* if the player is jumping up, jump.png is used. else, jumping downwards = land.png. */
+                if (player.direction >= 0) {
+                    if (player.vY < 0) {
+                        drawImage(jumpImage, (player.x-player.width), (player.y-player.height), player.width, player.height);
+                    } else {
+                        drawImage(landImage, (player.x-player.width), (player.y-player.height), player.width, player.height);
+                    }
                 } else {
-                    drawImage(landImage, (player.x-player.width), (player.y-player.height), player.width, player.height);
+                    if (player.vY < 0) {
+                        drawImage(jumpImage, player.x, (player.y-player.height), -player.width, player.height);
+                    } else {
+                        drawImage(landImage, player.x, (player.y-player.height), -player.width, player.height);
+                    }
                 }
                 break;
             default:
                 break;
         }
-        // draw hitbox;
-        drawRectangle(player.hitbox.x, player.hitbox.y, player.hitbox.width, player.hitbox.height);
+        drawRectangle(player.hitbox.x, player.hitbox.y, player.hitbox.width, player.hitbox.height); // draw hitbox;
     }
 
     /* --- ENEMY --- */
@@ -423,7 +462,6 @@ public class Emnity extends GameEngine {
                 player.vY = MAX_VERTICAL_VELOCITY;
                 jumpCount++;
                 jump = true;
-                player.state = 3;
             }
             space = true;
         }
