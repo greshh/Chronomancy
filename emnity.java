@@ -60,7 +60,7 @@ public class Emnity extends GameEngine {
     public void initPlatforms() {
         int platformWidth = 300;
         int platformHeight = 50;
-        platforms.add(new Platform(900, 500, platformWidth, platformHeight));
+        //platforms.add(new Platform(900, 500, platformWidth, platformHeight));
         platforms.add(new Platform(100, 400, platformWidth, platformHeight));
         platforms.add(new Platform(1100, 200, platformWidth, platformHeight));
         platforms.add(new Platform(1500, 400, platformWidth, platformHeight));
@@ -81,12 +81,18 @@ public class Emnity extends GameEngine {
     double lastvalue;
     double steps;
 
-    BufferedImage idleImage = (BufferedImage)(loadImage("idle.png"));
-    BufferedImage runImage = (BufferedImage)(loadImage("run.png"));
-    BufferedImage jumpImage = (BufferedImage)(loadImage("jump.png"));
-    BufferedImage landImage = (BufferedImage)(loadImage("land.png"));
+    BufferedImage idleImage = (BufferedImage)(loadImage("sprites/idle.png"));
+    BufferedImage runImage = (BufferedImage)(loadImage("sprites/run.png"));
+    BufferedImage jumpImage = (BufferedImage)(loadImage("sprites/jump.png"));
+    BufferedImage landImage = (BufferedImage)(loadImage("sprites/land.png"));
     BufferedImage[] dashImage = new BufferedImage[2];
-    BufferedImage stopImage = (BufferedImage)(loadImage("stop.png"));
+    BufferedImage stopImage = (BufferedImage)(loadImage("sprites/stop.png"));
+
+    double playerv2X; // derivative of velocity - acceleration.
+
+    int playerCurrentFrame;
+    double playerTimer;
+    double playerDuration;
     
     // checking collisions for platforms.
     public boolean checkCollision(Platform p) {
@@ -113,6 +119,9 @@ public class Emnity extends GameEngine {
     {
         // HORIZONTAL MOVEMENT;
 
+        /* update horizontal acceleration. */
+        playerv2X = player.vX/dt; // TO BE FIXED KLDFKLSDJF
+
         /* update hitbox position according to position of the player. */
         if (player.direction >= 0) {
             player.hitbox.x = player.x-player.width+60.0;
@@ -121,7 +130,7 @@ public class Emnity extends GameEngine {
         }
 
         steps = Math.abs(player.vX);
-        // this code makes the player move until the object is collided, instead of going inside the object and moving out like it was before;
+        /* this code makes the player move until the object is collided, instead of going inside the object and moving out like it was before. */
         for (int i = (int)steps; i > 0; i--) {
             lastvalue = player.x;
             player.x += player.vX/steps*dt;
@@ -146,7 +155,10 @@ public class Emnity extends GameEngine {
         }
 
         // VERTICAL MOVEMENT;
-        player.hitbox.y = player.y-player.height+15.0; // update hitbox position according to position of the player.
+
+        /* update hitbox position according to position of the player. */
+        player.hitbox.y = player.y-player.height+15.0; 
+
         steps = Math.abs(player.vY);
         for (int i = (int)steps; i > 0; i--) {
             lastvalue = player.y;
@@ -156,7 +168,6 @@ public class Emnity extends GameEngine {
             for (Platform p:platforms) {
                 if (checkCollision(p) == true) {
                     player.y = lastvalue;
-                    //player.hitbox.y = player.hitbox.y-player.hitbox.height;
                     if (player.vY > 0) {
                         jump = false;
                         jumpCount = 0;
@@ -246,18 +257,18 @@ public class Emnity extends GameEngine {
                 }
                 break;
             case 2: // dash;
-            /* if the player is dashing forward, dashf.png is used. else, dashing backwards = dashb.png. */
+            /* if the player is accelerating, dashf.png is used. else, decelerating = dashb.png. */
                 if (player.direction >= 0) {
-                    if (player.vX > 0) {
+                    if (playerv2X > 0) {
                         drawImage(dashImage[0], (player.x-player.width), (player.y-player.height), player.width, player.height);
                     } else {
                         drawImage(dashImage[1], (player.x-player.width), (player.y-player.height), player.width, player.height);
                     }
                 } else {
-                    if (player.vX > 0) {
-                        drawImage(dashImage[0], player.x, (player.y-player.height), -player.width, player.height);
-                    } else {
+                    if (playerv2X > 0) {
                         drawImage(dashImage[1], player.x, (player.y-player.height), -player.width, player.height);
+                    } else {
+                        drawImage(dashImage[0], player.x, (player.y-player.height), -player.width, player.height);
                     }
                 }
                 break;
@@ -385,8 +396,8 @@ public class Emnity extends GameEngine {
         menu = false;
 
         player = new Player(150.0, 150.0, (double)(mWidth/2), GROUND, 0.0, 0.0, new Hitbox((double)(mWidth/2)-85.0,GROUND-135.0,25.0,135.0));
-        dashImage[0] = (BufferedImage)(loadImage("dashf.png"));
-        dashImage[1] = (BufferedImage)(loadImage("dashb.png"));
+        dashImage[0] = (BufferedImage)(loadImage("sprites/dashf.png"));
+        dashImage[1] = (BufferedImage)(loadImage("sprites/dashb.png"));
         
         initEnemy();
         initPlatforms();
@@ -425,9 +436,9 @@ public class Emnity extends GameEngine {
         if (debug) {
             drawBoldText(5, 45, "player direction: " + player.direction + "");
             drawBoldText(5, 90, "xPush: " + xPush + "");
-            drawBoldText(5, 135, "player vY: " + player.vY);
+            drawBoldText(5, 135, "player vX: " + player.vX);
             drawBoldText(5, 180, "player.x: " + player.x + "");
-            // drawBoldText(5, 225, "player.y: " + player.y + "");
+            drawBoldText(5, 225, "playerv2X: " + playerv2X + "");
             drawBoldText(5, 270, "dash? " + dash + "");
             //drawBoldText(5, 315, "enemy 0: " + enemies.get(0).waitPeriod + "");
             //drawBoldText(5, 360, "enemy 1: " + enemies.get(1).waitPeriod + "");
