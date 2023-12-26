@@ -6,6 +6,8 @@ public class Character {
     double height, width;
     double x, y; // coordinates from top-left corner, excluding xPush;
     double vX, vY;
+    double timer, duration;
+    int currentFrame;
     int direction; // =0 if neutral, <0 if right, >0 if left;
     int state; 
     int hp;
@@ -22,6 +24,9 @@ public class Character {
         direction = 0;
         state = 0;
         hp = 100;
+        timer = 0;
+        duration = 0;
+        currentFrame = 0;
         isHit = false;
     }
 }

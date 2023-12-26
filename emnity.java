@@ -23,11 +23,11 @@ public class Emnity extends GameEngine {
     final static int FPS = 60; // frames per second;
     final double GROUND = mHeight-50.0; // y-coordinate of ground.
     final double GRAVITY = 40.0;
-    final double HORIZONTAL_ACCELERATION = 80.0;
-    final double HORIZONTAL_DECELERATION = 40.0;
+    final double HORIZONTAL_ACCELERATION = 60.0;
+    final double HORIZONTAL_DECELERATION = 60.0;
     final double GROUND_POUND_ACCELERATION = 100.0;
-    final double MAX_VERTICAL_VELOCITY = -600;
-    final double MAX_HORIZONTAL_VELOCITY = 400; // without dash;
+    final double MAX_VERTICAL_VELOCITY = -800;
+    final double MAX_HORIZONTAL_VELOCITY = 800; // without dash;
   
     /* --- MENU --- */
     boolean debug;
@@ -81,18 +81,17 @@ public class Emnity extends GameEngine {
     double lastvalue;
     double steps;
 
+    double dashCooldown; // enables backwards dash.
+
     BufferedImage idleImage = (BufferedImage)(loadImage("sprites/idle.png"));
-    BufferedImage runImage = (BufferedImage)(loadImage("sprites/run.png"));
+    BufferedImage[] walkImage = new BufferedImage[2];
+    BufferedImage[] runImage = new BufferedImage[3];
     BufferedImage jumpImage = (BufferedImage)(loadImage("sprites/jump.png"));
     BufferedImage landImage = (BufferedImage)(loadImage("sprites/land.png"));
     BufferedImage[] dashImage = new BufferedImage[2];
     BufferedImage stopImage = (BufferedImage)(loadImage("sprites/stop.png"));
 
     double playerv2X; // derivative of velocity - acceleration.
-
-    int playerCurrentFrame;
-    double playerTimer;
-    double playerDuration;
     
     // checking collisions for platforms.
     public boolean checkCollision(Platform p) {
@@ -184,36 +183,48 @@ public class Emnity extends GameEngine {
         }
 
         if (left) { 
-            if (jump) { 
-                player.state = 3;
-            } else {
+            player.direction = -1;
+            if (player.vX >= -300.0) {
+                if (player.state != 1) { player.timer = 0; }
                 player.state = 1;
+            } else {
+                if (player.state != 2) { player.timer = 0; }
+                player.state = 2;
             }
             if (player.vX > 0) { player.vX-= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; } 
             if (player.vX > -MAX_HORIZONTAL_VELOCITY) { 
                 player.vX-= HORIZONTAL_ACCELERATION; 
             } 
-            if (player.vX < -400 && !dash) { player.vX = -400; }
-            player.direction = -1;
+            if (player.vX < -MAX_HORIZONTAL_VELOCITY && !dash) { player.vX = -MAX_HORIZONTAL_VELOCITY; }
         } 
         if (right) { 
-            if (jump) { 
-                player.state = 3;
-            } else {
+            player.direction = 1;
+            if (player.vX <= 300.0) {
+                if (player.state != 1) { player.timer = 0; }
                 player.state = 1;
+            } else {
+                if (player.state != 2) { player.timer = 0; }
+                player.state = 2;
             }
             if (player.vX < 0) { player.vX+= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; } 
             if (player.vX < MAX_HORIZONTAL_VELOCITY) { 
                 player.vX+= HORIZONTAL_ACCELERATION; 
             } 
-            if (player.vX > 400 && !dash) {player.vX = 400; }
-            player.direction = 1;
+            if (player.vX > MAX_HORIZONTAL_VELOCITY && !dash) { player.vX = MAX_HORIZONTAL_VELOCITY; }
         }
         if (!left && !right) { 
             if (player.vX < 0 && player.direction < 0) { player.vX+= HORIZONTAL_DECELERATION; } // left
             if (player.vX > 0 && player.direction > 0) { player.vX-= HORIZONTAL_DECELERATION; } // right
             if (player.vX > -40 && player.vX < 40) { player.vX = 0; }
-            if (player.vX == 0) { player.state = 0; } // change state to idle;
+            if (player.vX == 0) { 
+                if (player.state != 0) { player.timer = 0; }
+                player.state = 0; 
+            } // change state to idle if not doing anything;
+        }
+
+        if (jump) { 
+            if (player.state != 4) { player.timer = 0; }
+            player.state = 4; 
         }
 
         player.vY+= GRAVITY;
@@ -221,20 +232,40 @@ public class Emnity extends GameEngine {
         if (down) { player.vY+= GROUND_POUND_ACCELERATION; }
 
         if (dash) {
-            player.state = 2;
+            dashCooldown+= dt;
+            if (player.state != 3) { player.timer = 0; }
+            player.state = 3;
             if (player.direction < 0) { // left
                 if (player.vX >= -MAX_HORIZONTAL_VELOCITY) { 
-                    dash = false; 
+                    dash = false;
+                    dashCooldown = 0; 
                 } else { 
                     player.vX+= 50.0; 
                 }
             } else if (player.direction > 0) { // right
                 if (player.vX <= MAX_HORIZONTAL_VELOCITY) {
                     dash = false;
+                    dashCooldown = 0;
                 } else {
                     player.vX-= 50.0;
                 }
             }
+        }
+
+        // UPDATING SPRITES.
+        player.timer += dt;
+        switch (player.state) {
+            case 1: // walking;
+                player.duration = 0.9;
+                player.currentFrame = (int)Math.floor(((player.timer%player.duration)/player.duration)*2);
+            case 2: // running;
+                player.duration = 0.3;
+                player.currentFrame = (int)Math.floor(((player.timer%player.duration)/player.duration)*3);
+                break;
+            default:
+                player.currentFrame = 0;
+                player.timer = 0;
+                player.duration = 0;
         }
     }
 
@@ -243,20 +274,35 @@ public class Emnity extends GameEngine {
         /* draws the player according to its state (listed) and then is determined by which direction the player was/is facing. */
         switch (player.state) {
             case 0: // idle;
-                if (player.direction >= 0) { 
+                if (player.direction >= 0) { // facing right;
                     drawImage(idleImage, (player.x-player.width), (player.y-player.height), player.width, player.height); 
-                } else {
+                } else { // left;
                     drawImage(idleImage, player.x, (player.y-player.height), -player.width, player.height);
                 }
                 break;
-            case 1: // run;
-                if (player.direction >= 0) {
-                    drawImage(runImage, (player.x-player.width), (player.y-player.height), player.width, player.height);
-                } else {
-                    drawImage(runImage, player.x, (player.y-player.height), -player.width, player.height);
+            case 1: // walk;
+                if (player.direction >= 0) { // facing right;
+                    drawImage(walkImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
+                } else { // facing left;
+                    drawImage(walkImage[player.currentFrame], player.x, (player.y-player.height), -player.width, player.height);
                 }
                 break;
-            case 2: // dash;
+            case 2: // run;
+                if (player.direction >= 0) { // facing right or idle;
+                    if (right) {
+                        drawImage(runImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
+                    } else {
+                        drawImage(stopImage, (player.x-player.width), (player.y-player.height), player.width, player.height);
+                    }
+                } else { // facing left;
+                    if (left) {
+                        drawImage(runImage[player.currentFrame], player.x, (player.y-player.height), -player.width, player.height);
+                    } else {
+                        drawImage(stopImage, player.x, (player.y-player.height), -player.width, player.height);
+                    }
+                }
+                break;
+            case 3: // dash;
             /* if the player is accelerating, dashf.png is used. else, decelerating = dashb.png. */
                 if (player.direction >= 0) {
                     if (playerv2X > 0) {
@@ -272,7 +318,7 @@ public class Emnity extends GameEngine {
                     }
                 }
                 break;
-            case 3: // jump/land;
+            case 4: // jump/land;
             /* if the player is jumping up, jump.png is used. else, jumping downwards = land.png. */
                 if (player.direction >= 0) {
                     if (player.vY < 0) {
@@ -291,7 +337,9 @@ public class Emnity extends GameEngine {
             default:
                 break;
         }
-        drawRectangle(player.hitbox.x, player.hitbox.y, player.hitbox.width, player.hitbox.height); // draw hitbox;
+        
+        /* draw hitbox if debug. */
+        if (debug) { drawRectangle(player.hitbox.x, player.hitbox.y, player.hitbox.width, player.hitbox.height); }
     }
 
     /* --- ENEMY --- */
@@ -396,8 +444,18 @@ public class Emnity extends GameEngine {
         menu = false;
 
         player = new Player(150.0, 150.0, (double)(mWidth/2), GROUND, 0.0, 0.0, new Hitbox((double)(mWidth/2)-85.0,GROUND-135.0,25.0,135.0));
+        
+        /* load state sprites with animations */
         dashImage[0] = (BufferedImage)(loadImage("sprites/dashf.png"));
         dashImage[1] = (BufferedImage)(loadImage("sprites/dashb.png"));
+        walkImage[0] = (BufferedImage)(loadImage("sprites/walk1.png"));
+        walkImage[1] = (BufferedImage)(loadImage("sprites/walk2.png"));
+        runImage[0] = (BufferedImage)(loadImage("sprites/run1.png"));
+        runImage[1] = (BufferedImage)(loadImage("sprites/run2.png"));
+        runImage[2] = (BufferedImage)(loadImage("sprites/run3.png"));
+
+        player.timer = 0; // reset player sprite timer.
+        dashCooldown = 0; // reset dash cooldown.
         
         initEnemy();
         initPlatforms();
@@ -436,9 +494,9 @@ public class Emnity extends GameEngine {
         if (debug) {
             drawBoldText(5, 45, "player direction: " + player.direction + "");
             drawBoldText(5, 90, "xPush: " + xPush + "");
-            drawBoldText(5, 135, "player vX: " + player.vX);
-            drawBoldText(5, 180, "player.x: " + player.x + "");
-            drawBoldText(5, 225, "playerv2X: " + playerv2X + "");
+            drawBoldText(5, 135, "player.vX: " + player.vX);
+            drawBoldText(5, 180, "dashCooldown: " + dashCooldown + "");
+            //drawBoldText(5, 225, "player current frame: " + player.currentFrame + "");
             drawBoldText(5, 270, "dash? " + dash + "");
             //drawBoldText(5, 315, "enemy 0: " + enemies.get(0).waitPeriod + "");
             //drawBoldText(5, 360, "enemy 1: " + enemies.get(1).waitPeriod + "");
@@ -449,7 +507,6 @@ public class Emnity extends GameEngine {
         }
 
         changeColor(white);
-        drawBoldText(mWidth-300, 45, "Player HP: " + player.hp);
         for (int i = 0; i < enemies.size(); i++) {
             if (enemies.get(i).x+xPush > 0 && enemies.get(i).x+enemies.get(i).width+xPush < mWidth && enemies.get(i).hp > 0) {
                 drawBoldText(mWidth-300, 45+((i+1)*30), "Enemy " + i + " HP: " + enemies.get(i).hp);
@@ -481,7 +538,7 @@ public class Emnity extends GameEngine {
                 if ((jump && dashCount<1) || !jump) {
                     if (!dash) {
                         dash = true;
-                        player.vX = 1000*player.direction;
+                        player.vX = 1300*player.direction;
                     }
                     if (jump) {
                         dashCount++;
@@ -491,14 +548,14 @@ public class Emnity extends GameEngine {
             shift = true;
         }
         if (e.getKeyCode() == KeyEvent.VK_TAB) { debug = !debug; }  
-        if (e.getKeyCode() == KeyEvent.VK_F) { 
-            f = true;
-            player.state = 4;
-        }
-        if (e.getKeyCode() == KeyEvent.VK_Q) {
-            q = true;
-            player.state = 5;
-        }
+        // if (e.getKeyCode() == KeyEvent.VK_F) { 
+        //     f = true;
+        //     player.state = 4;
+        // }
+        // if (e.getKeyCode() == KeyEvent.VK_Q) {
+        //     q = true;
+        //     player.state = 5;
+        // }
     }
 
     @Override

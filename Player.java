@@ -6,6 +6,6 @@ public class Player extends Character
 
     /*
      * STATES;
-     * 0 idle, 1 running, 2 dash, 3 jump/land, 4 light sword attack, 5 heavy sword attack;
+     * 0 idle, 1 walk, 2 running, 3 dash, 4 jump/land;
      */
 }
