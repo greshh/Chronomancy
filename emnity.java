@@ -3,10 +3,10 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 
-public class Emnity extends GameEngine {
+public class emnity extends GameEngine {
 
     public static void main(String args[]) {
-        createGame(new Emnity(), 60);
+        createGame(new emnity(), 60);
     }
 
     boolean space, left, right, down, shift, f, q;
@@ -61,9 +61,10 @@ public class Emnity extends GameEngine {
         int platformWidth = 300;
         int platformHeight = 50;
         //platforms.add(new Platform(900, 500, platformWidth, platformHeight));
-        platforms.add(new Platform(100, 400, platformWidth, platformHeight));
-        platforms.add(new Platform(1100, 200, platformWidth, platformHeight));
-        platforms.add(new Platform(1500, 400, platformWidth, platformHeight));
+        // platforms.add(new Platform(100, 400, platformWidth, platformHeight));
+        // platforms.add(new Platform(1100, 200, platformWidth, platformHeight));
+        // platforms.add(new Platform(1500, 400, platformWidth, platformHeight));
+        //platforms.add(new Platform(0,GROUND, 5000, mHeight-GROUND));
     }
 
     public void drawPlatforms() {
@@ -79,7 +80,7 @@ public class Emnity extends GameEngine {
     double floorY;
 
     double lastvalue;
-    double steps;
+    double stepsX, stepsY;
 
     double dashCooldown; // enables backwards dash.
 
@@ -95,8 +96,7 @@ public class Emnity extends GameEngine {
     
     // checking collisions for platforms.
     public boolean checkCollision(Platform p) {
-        if (player.y > GROUND
-            || (player.hitbox.y > p.y && player.hitbox.y-player.hitbox.height < p.y+p.height 
+        if (player.hitbox.y <= GROUND || (player.hitbox.y > p.y && player.hitbox.y-player.hitbox.height < p.y+p.height 
             && player.hitbox.x > p.x+xPush && player.hitbox.x-player.hitbox.width < p.x+xPush+p.width)) {
             return true;
         } else { 
@@ -121,52 +121,49 @@ public class Emnity extends GameEngine {
         /* update horizontal acceleration. */
         playerv2X = player.vX/dt; // TO BE FIXED KLDFKLSDJF
 
-        /* update hitbox position according to position of the player. */
-        if (player.direction >= 0) {
-            player.hitbox.x = player.x-player.width+60.0;
-        } else {
-            player.hitbox.x = player.x-player.width+65.0;
-        }
-
-        steps = Math.abs(player.vX);
+        stepsX = Math.abs(player.vX);
         /* this code makes the player move until the object is collided, instead of going inside the object and moving out like it was before. */
-        for (int i = (int)steps; i > 0; i--) {
-            lastvalue = player.x;
-            player.x += player.vX/steps*dt;
+        for (int i = (int)stepsX; i > 0; i--) {
+            lastvalue = player.hitbox.x;
+            player.hitbox.x += player.vX/stepsX*dt;
 
             // detecting for collisions;
             for (Platform p:platforms) {
                 if (checkCollision(p) == true) {
-                    player.x = lastvalue;
-                    player.hitbox.x = player.hitbox.x-player.hitbox.width+65.0;
+                    player.hitbox.x = lastvalue;
                     player.vX = 0;
                 }
             }
         }
 
-        if (player.x+player.width > frameXR) { 
-            xPush+= (frameXR-player.x-player.width);
-            player.x = frameXR-player.width;
+        /* update player position according to position of the player. */
+        if (player.direction >= 0) {
+            player.x = player.hitbox.x+player.hitbox.width+60.0;
+        } else {
+            player.x = player.hitbox.x+player.hitbox.width+65.0;
+        }
+
+        if (player.hitbox.x+player.hitbox.width > frameXR) { 
+            xPush+= (frameXR-player.hitbox.x-player.hitbox.width);
+            player.hitbox.x = frameXR-player.hitbox.width;
+            player.x = frameXR+60.0;
         } 
-        if (player.x < frameXL) {
-            if (xPush < 0) { xPush+= (frameXL-player.x); }
-            player.x = frameXL;
+        if (player.hitbox.x < frameXL) {
+            if (xPush < 0) { xPush+= (frameXL-player.hitbox.x); }
+            player.hitbox.x = frameXL;
+            player.x = frameXL+player.width-65.0;
         }
 
         // VERTICAL MOVEMENT;
 
-        /* update hitbox position according to position of the player. */
-        player.hitbox.y = player.y-player.height+15.0; 
-
-        steps = Math.abs(player.vY);
-        for (int i = (int)steps; i > 0; i--) {
-            lastvalue = player.y;
-            player.y += player.vY/steps*dt;
-            if (player.vY != 40) { player.hitbox.y += player.vY/steps*dt; }
+        stepsY = Math.abs(player.vY);
+        for (int i = (int)stepsY; i > 0; i--) {
+            lastvalue = player.hitbox.y;
+            player.hitbox.y += player.vY/stepsY*dt;
             
             for (Platform p:platforms) {
                 if (checkCollision(p) == true) {
-                    player.y = lastvalue;
+                    player.hitbox.y = lastvalue;
                     if (player.vY > 0) {
                         jump = false;
                         jumpCount = 0;
@@ -175,8 +172,22 @@ public class Emnity extends GameEngine {
                     player.vY = 0;
                 }
             }
+        } 
+
+        if (player.hitbox.y+player.hitbox.height < GROUND) { 
+            player.vY+= GRAVITY; 
+        } else {
+            player.hitbox.y = GROUND-player.hitbox.height;
+            jump = false;
+            jumpCount = 0;
+            dashCount = 0;
+            player.vY = 0.0;
         }
 
+        /* update player position according to position of the player. */
+        player.y = player.hitbox.y+player.hitbox.height; 
+
+        
         /* if the player runs out of the screen, it stays at the edge and the scene moves by xPush. */
         if (player.x-player.width <= 0 && xPush == 0) {
             player.x = player.width;
@@ -226,8 +237,6 @@ public class Emnity extends GameEngine {
             if (player.state != 4) { player.timer = 0; }
             player.state = 4; 
         }
-
-        player.vY+= GRAVITY;
         
         if (down) { player.vY+= GROUND_POUND_ACCELERATION; }
 
@@ -493,10 +502,10 @@ public class Emnity extends GameEngine {
         /* press TAB to see the debug menu */
         if (debug) {
             drawBoldText(5, 45, "player direction: " + player.direction + "");
-            drawBoldText(5, 90, "xPush: " + xPush + "");
+            drawBoldText(5, 90, "player.vY: " + player.vY + "");
             drawBoldText(5, 135, "player.vX: " + player.vX);
-            drawBoldText(5, 180, "dashCooldown: " + dashCooldown + "");
-            //drawBoldText(5, 225, "player current frame: " + player.currentFrame + "");
+            drawBoldText(5, 180, "player.hitbox.y+player.hitbox.height: " + (player.hitbox.y+player.hitbox.height) + "");
+            drawBoldText(5, 225, "GROUND: " + GROUND + "");
             drawBoldText(5, 270, "dash? " + dash + "");
             //drawBoldText(5, 315, "enemy 0: " + enemies.get(0).waitPeriod + "");
             //drawBoldText(5, 360, "enemy 1: " + enemies.get(1).waitPeriod + "");
