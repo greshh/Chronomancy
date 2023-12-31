@@ -1,6 +1,7 @@
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.nio.Buffer;
 import java.util.ArrayList;
 
 public class emnity extends GameEngine {
@@ -11,7 +12,7 @@ public class emnity extends GameEngine {
 
     boolean space, left, right, down, shift, f, q;
     boolean leftClick, rightClick;
-    boolean jump, dash;
+    boolean jump, dash, attack;
 
     int jumpCount, dashCount;
 
@@ -60,11 +61,10 @@ public class emnity extends GameEngine {
     public void initPlatforms() {
         int platformWidth = 300;
         int platformHeight = 50;
-        //platforms.add(new Platform(900, 500, platformWidth, platformHeight));
-        // platforms.add(new Platform(100, 400, platformWidth, platformHeight));
-        // platforms.add(new Platform(1100, 200, platformWidth, platformHeight));
-        // platforms.add(new Platform(1500, 400, platformWidth, platformHeight));
-        //platforms.add(new Platform(0,GROUND, 5000, mHeight-GROUND));
+        platforms.add(new Platform(900, 400, platformWidth, platformHeight));
+        platforms.add(new Platform(100, 400, platformWidth, platformHeight));
+        platforms.add(new Platform(1100, 200, platformWidth, platformHeight));
+        platforms.add(new Platform(1500, 400, platformWidth, platformHeight));
     }
 
     public void drawPlatforms() {
@@ -84,20 +84,34 @@ public class emnity extends GameEngine {
 
     double dashCooldown; // enables backwards dash.
 
+    // normal sprites.
     BufferedImage idleImage = (BufferedImage)(loadImage("sprites/idle.png"));
     BufferedImage[] walkImage = new BufferedImage[2];
     BufferedImage[] runImage = new BufferedImage[3];
     BufferedImage jumpImage = (BufferedImage)(loadImage("sprites/jump.png"));
     BufferedImage landImage = (BufferedImage)(loadImage("sprites/land.png"));
     BufferedImage[] dashImage = new BufferedImage[2];
-    BufferedImage stopImage = (BufferedImage)(loadImage("sprites/stop.png"));
+    BufferedImage stopImage = (BufferedImage)(loadImage("sprites/stop.png")); // when slowing down after arrow key has been released.
+
+    // attack sprites + weights.
+    int attackCurrentFrame;
+    BufferedImage[] dLightStartImage = new BufferedImage[5]; // on ground, holding down arrow key and attacking
+    int[] dLightStartImageWeights = {2, 4, 2, 2, 2};
+    BufferedImage[] dLightHitImage = new BufferedImage[3];
+    int[] dLightHitImageWeights = {2, 2, 2};
+    BufferedImage[] dLightMissImage = new BufferedImage[3];
+    int[] dLightMissImageWeights = {4, 2, 2};
+    BufferedImage[] sLightImage = new BufferedImage[6]; // on ground, holding left/right arrow key and attacking
+    int[] sLightImageWeights = {2, 4, 2, 2, 2, 2};
+    BufferedImage[] sAirImage = new BufferedImage[7]; // in air, holding left/right arrow key and attacking
+    int[] sAirImageWeights = {2, 2, 4, 2, 2, 2, 2};
 
     double playerv2X; // derivative of velocity - acceleration.
     
     // checking collisions for platforms.
     public boolean checkCollision(Platform p) {
-        if (player.hitbox.y <= GROUND || (player.hitbox.y > p.y && player.hitbox.y-player.hitbox.height < p.y+p.height 
-            && player.hitbox.x > p.x+xPush && player.hitbox.x-player.hitbox.width < p.x+xPush+p.width)) {
+        if (player.hitbox.y < GROUND && (player.hitbox.y <= p.y+p.height && player.hitbox.y+player.hitbox.height >= p.y 
+            && player.hitbox.x <= p.x+p.width+xPush && player.hitbox.x+player.hitbox.width >= p.x+xPush)) {
             return true;
         } else { 
             return false; 
@@ -193,13 +207,19 @@ public class emnity extends GameEngine {
             player.x = player.width;
         }
 
-        if (left) { 
+        if (left && !attack) { 
             player.direction = -1;
-            if (player.vX >= -300.0) {
-                if (player.state != 1) { player.timer = 0; }
+            if (player.vX >= -400.0) {
+                if (player.state != 1) { 
+                    player.timer = 0; 
+                    player.currentFrame = 0;
+                }
                 player.state = 1;
             } else {
-                if (player.state != 2) { player.timer = 0; }
+                if (player.state != 2) { 
+                    player.timer = 0; 
+                    player.currentFrame = 0;
+                }
                 player.state = 2;
             }
             if (player.vX > 0) { player.vX-= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; } 
@@ -208,13 +228,19 @@ public class emnity extends GameEngine {
             } 
             if (player.vX < -MAX_HORIZONTAL_VELOCITY && !dash) { player.vX = -MAX_HORIZONTAL_VELOCITY; }
         } 
-        if (right) { 
+        if (right && !attack) { 
             player.direction = 1;
-            if (player.vX <= 300.0) {
-                if (player.state != 1) { player.timer = 0; }
+            if (player.vX <= 400.0) {
+                if (player.state != 1) { 
+                    player.timer = 0; 
+                    player.currentFrame = 0;
+                }
                 player.state = 1;
             } else {
-                if (player.state != 2) { player.timer = 0; }
+                if (player.state != 2) { 
+                    player.timer = 0; 
+                    player.currentFrame = 0;
+                }
                 player.state = 2;
             }
             if (player.vX < 0) { player.vX+= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; } 
@@ -227,14 +253,20 @@ public class emnity extends GameEngine {
             if (player.vX < 0 && player.direction < 0) { player.vX+= HORIZONTAL_DECELERATION; } // left
             if (player.vX > 0 && player.direction > 0) { player.vX-= HORIZONTAL_DECELERATION; } // right
             if (player.vX > -40 && player.vX < 40) { player.vX = 0; }
-            if (player.vX == 0) { 
-                if (player.state != 0) { player.timer = 0; }
+            if (player.vX == 0 && !attack) { 
+                if (player.state != 0) { 
+                    player.timer = 0; 
+                    player.currentFrame = 0;
+                }
                 player.state = 0; 
             } // change state to idle if not doing anything;
         }
 
-        if (jump) { 
-            if (player.state != 4) { player.timer = 0; }
+        if (jump && !attack) { 
+            if (player.state != 4) { 
+                player.timer = 0; 
+                player.currentFrame = 0;
+            }
             player.state = 4; 
         }
         
@@ -242,7 +274,12 @@ public class emnity extends GameEngine {
 
         if (dash) {
             dashCooldown+= dt;
-            if (player.state != 3) { player.timer = 0; }
+            if (!attack) {
+                if (player.state != 3) { 
+                    player.timer = 0; 
+                    player.currentFrame = 0;
+                }
+            }
             player.state = 3;
             if (player.direction < 0) { // left
                 if (player.vX >= -MAX_HORIZONTAL_VELOCITY) { 
@@ -261,6 +298,18 @@ public class emnity extends GameEngine {
             }
         }
 
+        /* changing state to light attack on mouse click. */
+        if (leftClick) { 
+            if ((!jump && down) || (!jump && (left || right)) || (jump && (left || right))) { // before nair is created.
+                if (player.state != 5) { 
+                    player.timer = 0; 
+                }
+                player.state = 5;
+                if (!attack) { attackCurrentFrame = 0; }
+                attack = true;
+            }
+        }
+
         // UPDATING SPRITES.
         player.timer += dt;
         switch (player.state) {
@@ -270,6 +319,34 @@ public class emnity extends GameEngine {
             case 2: // running;
                 player.duration = 0.3;
                 player.currentFrame = (int)Math.floor(((player.timer%player.duration)/player.duration)*3);
+                break;
+            case 5: // light attack;
+                player.duration = 1.0;
+                int frameSum = 0;
+                if (!jump && down) { // dLight;
+                    for (int i = 0; i < dLightStartImageWeights.length-1; i++) {
+                        frameSum += dLightStartImageWeights[i];
+                    }
+                    
+                    int i = 0; // current index being searched.
+                    while (attackCurrentFrame < frameSum) {
+                        int j = 0; // total dLight weights up to current i;
+                        for (int k = 0; k < i; k++) {
+                            j+= dLightStartImageWeights[k];
+                        }
+                        if (attackCurrentFrame <= j) {
+                            player.currentFrame = i;
+                            break;
+                        } else {
+                            i++;
+                        }
+                    }
+
+                    if (attackCurrentFrame > frameSum) { attack = false; }
+
+                    attackCurrentFrame++;
+                }
+                //player.currentFrame = 0; // DEBUG FOR TESTING IF CURRENT FRAME CODE ISN'T WORKING YET
                 break;
             default:
                 player.currentFrame = 0;
@@ -290,6 +367,7 @@ public class emnity extends GameEngine {
                 }
                 break;
             case 1: // walk;
+                if (player.currentFrame >= 2) { player.currentFrame = 0; }
                 if (player.direction >= 0) { // facing right;
                     drawImage(walkImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
                 } else { // facing left;
@@ -343,6 +421,27 @@ public class emnity extends GameEngine {
                     }
                 }
                 break;
+            case 5:
+                if (!jump && down) { // dLight;
+                    if (player.direction >= 0) {
+                        drawImage(dLightStartImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
+                    } else {
+                        drawImage(dLightStartImage[player.currentFrame], player.x, (player.y-player.height), -player.width, player.height);
+                    } 
+                } else if (!jump && (left || right)) { // sLightImage;
+                    if (player.direction >= 0) {
+                        drawImage(sLightImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
+                    } else {
+                        drawImage(sLightImage[player.currentFrame], player.x, (player.y-player.height), -player.width, player.height);
+                    }
+                } else if (jump && (left || right)) { // sAirImage;
+                    if (player.direction >= 0) {
+                        drawImage(sAirImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
+                    } else {
+                        drawImage(sAirImage[player.currentFrame], player.x, (player.y-player.height), -player.width, player.height);
+                    }
+                }
+                break;
             default:
                 break;
         }
@@ -354,10 +453,10 @@ public class emnity extends GameEngine {
     /* --- ENEMY --- */
     ArrayList<Enemy> enemies = new ArrayList<>();
 
-    double enemyY = (GROUND-70.0);
+    double enemyY = (GROUND-100.0);
 
     public void initEnemy() {
-        //enemies.add(new Enemy(player.width, player.height, 1100.00, enemyY, 0.0, 0.0, 0.0, new Hitbox(0,0,0,0)));
+        enemies.add(new Enemy(30, 100, 1100.00, enemyY, 0.0, 0.0, 0.0, new Hitbox(0,0,0,0)));
         //enemies.add(new Moving(player.width, player.height, 300.00, enemyY, 75.00, 0, 2.0, 150.0, new Hitbox(0,0,0,0)));
         //enemies.add(new Following(player.width, player.height, 1500.00, enemyY, 200.00, 0));
     }
@@ -429,9 +528,55 @@ public class emnity extends GameEngine {
 
     /* --- GAME --- */
 
+    public void loadSprites() 
+    {
+        // PLAYER //
+
+        dashImage[0] = (BufferedImage)(loadImage("sprites/dashf.png"));
+        dashImage[1] = (BufferedImage)(loadImage("sprites/dashb.png"));
+
+        walkImage[0] = (BufferedImage)(loadImage("sprites/walk1.png"));
+        walkImage[1] = (BufferedImage)(loadImage("sprites/walk2.png"));
+
+        runImage[0] = (BufferedImage)(loadImage("sprites/run1.png"));
+        runImage[1] = (BufferedImage)(loadImage("sprites/run2.png"));
+        runImage[2] = (BufferedImage)(loadImage("sprites/run3.png"));
+
+        dLightStartImage[0] = (BufferedImage)(loadImage("sprites/dlight0001.png"));
+        dLightStartImage[1] = (BufferedImage)(loadImage("sprites/dlight0003.png"));
+        dLightStartImage[2] = (BufferedImage)(loadImage("sprites/dlight0007.png"));
+        dLightStartImage[3] = (BufferedImage)(loadImage("sprites/dlight0009.png"));
+        dLightStartImage[4] = (BufferedImage)(loadImage("sprites/dlight0011.png"));
+
+        dLightHitImage[0] = (BufferedImage)(loadImage("sprites/dLightHit0001.png"));
+        dLightHitImage[1] = (BufferedImage)(loadImage("sprites/dLightHit0003.png"));
+        dLightHitImage[2] = (BufferedImage)(loadImage("sprites/dLightHit0005.png"));
+
+        dLightMissImage[0] = (BufferedImage)(loadImage("sprites/dLightMiss0001.png"));
+        dLightMissImage[1] = (BufferedImage)(loadImage("sprites/dLightMiss0005.png"));
+        dLightMissImage[2] = (BufferedImage)(loadImage("sprites/dLightMiss0007.png"));
+
+        sAirImage[0] = (BufferedImage)(loadImage("sprites/sAir0001.png"));
+        sAirImage[1] = (BufferedImage)(loadImage("sprites/sAir0003.png"));
+        sAirImage[2] = (BufferedImage)(loadImage("sprites/sAir0005.png"));
+        sAirImage[3] = (BufferedImage)(loadImage("sprites/sAir0009.png"));
+        sAirImage[4] = (BufferedImage)(loadImage("sprites/sAir0011.png"));
+        sAirImage[5] = (BufferedImage)(loadImage("sprites/sAir0013.png"));
+        sAirImage[6] = (BufferedImage)(loadImage("sprites/sAir0015.png"));
+
+        sLightImage[0] = (BufferedImage)(loadImage("sprites/sLight0001.png"));
+        sLightImage[1] = (BufferedImage)(loadImage("sprites/sLight0003.png"));
+        sLightImage[2] = (BufferedImage)(loadImage("sprites/sLight0007.png"));
+        sLightImage[3] = (BufferedImage)(loadImage("sprites/sLight0009.png"));
+        sLightImage[4] = (BufferedImage)(loadImage("sprites/sLight0011.png"));
+        sLightImage[5] = (BufferedImage)(loadImage("sprites/sLight0013.png"));
+    }
+
     @Override
     public void init() 
     {
+        loadSprites();
+
         space = false;
         left = false;
         right = false;
@@ -444,6 +589,7 @@ public class emnity extends GameEngine {
 
         jump = false;
         dash = false;
+        attack = false;
         jumpCount = 0;
         dashCount = 0;
 
@@ -453,15 +599,6 @@ public class emnity extends GameEngine {
         menu = false;
 
         player = new Player(150.0, 150.0, (double)(mWidth/2), GROUND, 0.0, 0.0, new Hitbox((double)(mWidth/2)-85.0,GROUND-135.0,25.0,135.0));
-        
-        /* load state sprites with animations */
-        dashImage[0] = (BufferedImage)(loadImage("sprites/dashf.png"));
-        dashImage[1] = (BufferedImage)(loadImage("sprites/dashb.png"));
-        walkImage[0] = (BufferedImage)(loadImage("sprites/walk1.png"));
-        walkImage[1] = (BufferedImage)(loadImage("sprites/walk2.png"));
-        runImage[0] = (BufferedImage)(loadImage("sprites/run1.png"));
-        runImage[1] = (BufferedImage)(loadImage("sprites/run2.png"));
-        runImage[2] = (BufferedImage)(loadImage("sprites/run3.png"));
 
         player.timer = 0; // reset player sprite timer.
         dashCooldown = 0; // reset dash cooldown.
@@ -476,7 +613,7 @@ public class emnity extends GameEngine {
             updatePlayer(dt); 
             for (Enemy e:enemies) {
                 updateEnemy(dt, e);
-                if (checkCollision(e) && !e.isHit && (q || leftClick || rightClick)) { 
+                if (checkCollision(e) && !e.isHit && attack) { 
                     e.isHit = true;
                     if (leftClick) { e.hp-= 10; } // for light sword attack;
                     if (rightClick) { e.hp-= 30; } // for heavy sword attack;
@@ -502,8 +639,8 @@ public class emnity extends GameEngine {
         /* press TAB to see the debug menu */
         if (debug) {
             drawBoldText(5, 45, "player direction: " + player.direction + "");
-            drawBoldText(5, 90, "player.vY: " + player.vY + "");
-            drawBoldText(5, 135, "player.vX: " + player.vX);
+            drawBoldText(5, 90, "attackCurrentFrame: " + attackCurrentFrame + "");
+            drawBoldText(5, 135, "player.currentFrame: " + player.currentFrame);
             drawBoldText(5, 180, "player.hitbox.y+player.hitbox.height: " + (player.hitbox.y+player.hitbox.height) + "");
             drawBoldText(5, 225, "GROUND: " + GROUND + "");
             drawBoldText(5, 270, "dash? " + dash + "");
