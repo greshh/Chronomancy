@@ -2,7 +2,7 @@ import java.awt.image.BufferedImage;
 
 public class Character {
     BufferedImage spritesheet;
-    boolean isHit;
+    boolean isHit, isAttacking;
     double height, width;
     double x, y; // coordinates from top-left corner, excluding xPush;
     double vX, vY;
@@ -28,5 +28,6 @@ public class Character {
         duration = 0;
         currentFrame = 0;
         isHit = false;
+        isAttacking = false;
     }
 }

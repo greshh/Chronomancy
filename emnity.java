@@ -101,8 +101,8 @@ public class emnity extends GameEngine {
     int[] dLightHitImageWeights = {2, 2, 2};
     BufferedImage[] dLightMissImage = new BufferedImage[3];
     int[] dLightMissImageWeights = {4, 2, 2};
-    BufferedImage[] sLightImage = new BufferedImage[6]; // on ground, holding left/right arrow key and attacking
-    int[] sLightImageWeights = {2, 4, 2, 2, 2, 2};
+    BufferedImage[] sLightImage = new BufferedImage[9]; // on ground, holding left/right arrow key and attacking
+    int[] sLightImageWeights = {2, 4, 2, 2, 2, 4, 2, 4, 2, 2};
     BufferedImage[] sAirImage = new BufferedImage[7]; // in air, holding left/right arrow key and attacking
     int[] sAirImageWeights = {2, 2, 4, 2, 2, 2, 2};
 
@@ -126,6 +126,15 @@ public class emnity extends GameEngine {
         } else { 
             return false; 
         }
+    }
+
+    public boolean isHitting() {
+        for (Enemy e:enemies) {
+            if (checkCollision(e)) { 
+                return true;
+            }
+        }
+        return false;
     }
 
     public void updatePlayer(double dt) 
@@ -324,25 +333,74 @@ public class emnity extends GameEngine {
                 player.duration = 1.0;
                 int frameSum = 0;
                 if (!jump && down) { // dLight;
-                    for (int i = 0; i < dLightStartImageWeights.length-1; i++) {
-                        frameSum += dLightStartImageWeights[i];
+                    for (int a = 0; a < dLightStartImageWeights.length-1; a++) {
+                        frameSum += dLightStartImageWeights[a];
                     }
+
+                    /* if the current frame (attackCurrentFrame) is less or equal to that of the animation sprite's weight, then that sprite is used. */
                     
                     int i = 0; // current index being searched.
                     while (attackCurrentFrame < frameSum) {
                         int j = 0; // total dLight weights up to current i;
                         for (int k = 0; k < i; k++) {
-                            j+= dLightStartImageWeights[k];
+                            if (k < dLightStartImageWeights.length) { 
+                                j+= dLightStartImageWeights[k]; 
+                            } else {
+                                break;
+                            }
                         }
-                        if (attackCurrentFrame <= j) {
+                        if (attackCurrentFrame <= j && !player.isAttacking) {
                             player.currentFrame = i;
                             break;
-                        } else {
+                        } else if (i <= dLightStartImage.length && !player.isAttacking) {
                             i++;
+                        } else {
+                            break;
                         }
                     }
 
-                    if (attackCurrentFrame > frameSum) { attack = false; }
+                    if (attackCurrentFrame >= frameSum) { player.isAttacking = true; } 
+
+                    if (player.isAttacking) {
+                        if (isHitting()) {
+                            for (int a = 0; a < dLightHitImage.length-1; a++) {
+                                frameSum+= dLightHitImageWeights[a];
+                            }
+                        } else {
+                            for (int a = 0; a < dLightMissImage.length-1; a++) {
+                                frameSum+= dLightMissImageWeights[a];
+                            } 
+                        }
+
+                        i = 0; // current index being searched.
+                        while (attackCurrentFrame < frameSum) {
+                            int j = 0; // total dLight weights up to current i;
+                            for (int k = 0; k < i; k++) {
+                                if (isHitting() && k < dLightHitImageWeights.length) {
+                                    j+= dLightHitImageWeights[k];
+                                } else if (!isHitting() && k < dLightMissImageWeights.length) {
+                                    j+= dLightMissImageWeights[k];
+                                }
+                            }
+                            if (attackCurrentFrame <= j) {
+                                if (i < dLightMissImage.length) {
+                                    player.currentFrame = i;
+                                } else {
+                                    player.currentFrame = dLightMissImage.length-1;
+                                }
+                                break;
+                            } else if (i <= dLightMissImage.length) { 
+                                i++; 
+                            } else {
+                                break;
+                            }
+                        }
+
+                        if (attackCurrentFrame >= frameSum) { 
+                            attack = false; 
+                            player.isAttacking = false;
+                        }
+                    }
 
                     attackCurrentFrame++;
                 }
@@ -423,11 +481,25 @@ public class emnity extends GameEngine {
                 break;
             case 5:
                 if (!jump && down) { // dLight;
-                    if (player.direction >= 0) {
-                        drawImage(dLightStartImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
-                    } else {
-                        drawImage(dLightStartImage[player.currentFrame], player.x, (player.y-player.height), -player.width, player.height);
-                    } 
+                    if (!player.isAttacking) {
+                        if (player.direction >= 0) {
+                            drawImage(dLightStartImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
+                        } else {
+                            drawImage(dLightStartImage[player.currentFrame], player.x, (player.y-player.height), -player.width, player.height);
+                        } 
+                    } else if (player.isAttacking && isHitting()) {
+                        if (player.direction >= 0) {
+                            drawImage(dLightHitImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
+                        } else {
+                            drawImage(dLightHitImage[player.currentFrame], player.x, (player.y-player.height), -player.width, player.height);
+                        } 
+                    } else if (player.isAttacking && !isHitting()) {
+                        if (player.direction >= 0) {
+                            drawImage(dLightMissImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
+                        } else {
+                            drawImage(dLightMissImage[player.currentFrame], player.x, (player.y-player.height), -player.width, player.height);
+                        } 
+                    }
                 } else if (!jump && (left || right)) { // sLightImage;
                     if (player.direction >= 0) {
                         drawImage(sLightImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
@@ -570,6 +642,9 @@ public class emnity extends GameEngine {
         sLightImage[3] = (BufferedImage)(loadImage("sprites/sLight0009.png"));
         sLightImage[4] = (BufferedImage)(loadImage("sprites/sLight0011.png"));
         sLightImage[5] = (BufferedImage)(loadImage("sprites/sLight0013.png"));
+        sLightImage[6] = (BufferedImage)(loadImage("sprites/sLight0017.png"));
+        sLightImage[7] = (BufferedImage)(loadImage("sprites/sLight0019.png"));
+        sLightImage[8] = (BufferedImage)(loadImage("sprites/sLight0023.png"));   
     }
 
     @Override
@@ -613,14 +688,14 @@ public class emnity extends GameEngine {
             updatePlayer(dt); 
             for (Enemy e:enemies) {
                 updateEnemy(dt, e);
-                if (checkCollision(e) && !e.isHit && attack) { 
-                    e.isHit = true;
-                    if (leftClick) { e.hp-= 10; } // for light sword attack;
-                    if (rightClick) { e.hp-= 30; } // for heavy sword attack;
-                    if (q) { e.hp-= 50; } // for ultimate;
-                } else if (e.isHit && !q && !leftClick && !rightClick) {
-                    e.isHit = false;
-                }
+                // if (checkCollision(e) && !e.isHit && attack) { 
+                //     e.isHit = true;
+                //     if (leftClick) { e.hp-= 10; } // for light sword attack;
+                //     if (rightClick) { e.hp-= 30; } // for heavy sword attack;
+                //     if (q) { e.hp-= 50; } // for ultimate;
+                // } else if (e.isHit && !q && !leftClick && !rightClick) {
+                //     e.isHit = false;
+                // }
             }
         }
     }
