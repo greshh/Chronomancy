@@ -93,18 +93,12 @@ public class emnity extends GameEngine {
     BufferedImage[] dashImage = new BufferedImage[2];
     BufferedImage stopImage = (BufferedImage)(loadImage("sprites/stop.png")); // when slowing down after arrow key has been released.
 
-    // attack sprites + weights.
-    int attackCurrentFrame;
-    BufferedImage[] dLightStartImage = new BufferedImage[5]; // on ground, holding down arrow key and attacking
-    int[] dLightStartImageWeights = {2, 4, 2, 2, 2};
-    BufferedImage[] dLightHitImage = new BufferedImage[3];
-    int[] dLightHitImageWeights = {2, 2, 2};
-    BufferedImage[] dLightMissImage = new BufferedImage[3];
-    int[] dLightMissImageWeights = {4, 2, 2};
-    BufferedImage[] sLightImage = new BufferedImage[9]; // on ground, holding left/right arrow key and attacking
-    int[] sLightImageWeights = {2, 4, 2, 2, 2, 4, 2, 4, 2, 2};
-    BufferedImage[] sAirImage = new BufferedImage[7]; // in air, holding left/right arrow key and attacking
-    int[] sAirImageWeights = {2, 2, 4, 2, 2, 2, 2};
+    // attack sprites
+    BufferedImage[] dLightStartImage = new BufferedImage[12]; // on ground, holding down arrow key and attacking
+    BufferedImage[] dLightHitImage = new BufferedImage[6];
+    BufferedImage[] dLightMissImage = new BufferedImage[8];
+    BufferedImage[] sLightImage = new BufferedImage[24]; // on ground, holding left/right arrow key and attacking
+    BufferedImage[] sAirImage = new BufferedImage[20]; // in air, holding left/right arrow key and attacking
 
     double playerv2X; // derivative of velocity - acceleration.
     
@@ -120,8 +114,10 @@ public class emnity extends GameEngine {
 
     // checking collisions for enemies.
     public boolean checkCollision(Character enemy) {
-        if ((player.hitbox.y > enemy.hitbox.y && player.hitbox.y-player.hitbox.height < enemy.hitbox.y+enemy.hitbox.height 
-            && player.hitbox.x > enemy.hitbox.x+xPush && player.hitbox.x-player.hitbox.width < enemy.hitbox.x+xPush+enemy.hitbox.width)) {
+        if ((player.hitbox.y < enemy.hitbox.y+enemy.hitbox.height) 
+                && (player.hitbox.y+player.hitbox.height > enemy.hitbox.y) 
+                && (player.hitbox.x < enemy.hitbox.x+enemy.hitbox.width+xPush) 
+                && (player.hitbox.x+player.hitbox.width > enemy.hitbox.x+xPush)) {
             return true;
         } else { 
             return false; 
@@ -310,14 +306,22 @@ public class emnity extends GameEngine {
         /* changing state to light attack on mouse click. */
         if (leftClick) { 
             if ((!jump && down) || (!jump && (left || right)) || (jump && (left || right))) { // before nair is created.
+                if (!jump && down) {
+                    ((Player)player).attackState = 1; // dLight;
+                } else if (!jump && (left || right)) {
+                    ((Player)player).attackState = 2; // sLight;
+                } else if (jump && (left || right)) {
+                    ((Player)player).attackState = 3; // sAir;
+                }
                 if (player.state != 5) { 
                     player.timer = 0; 
                 }
                 player.state = 5;
-                if (!attack) { attackCurrentFrame = 0; }
                 attack = true;
             }
         }
+
+        if (!attack) { ((Player)player).attackState = 0; }
 
         // UPDATING SPRITES.
         player.timer += dt;
@@ -330,79 +334,50 @@ public class emnity extends GameEngine {
                 player.currentFrame = (int)Math.floor(((player.timer%player.duration)/player.duration)*3);
                 break;
             case 5: // light attack;
-                player.duration = 1.0;
-                int frameSum = 0;
-                if (!jump && down) { // dLight;
-                    for (int a = 0; a < dLightStartImageWeights.length-1; a++) {
-                        frameSum += dLightStartImageWeights[a];
-                    }
-
-                    /* if the current frame (attackCurrentFrame) is less or equal to that of the animation sprite's weight, then that sprite is used. */
-                    
-                    int i = 0; // current index being searched.
-                    while (attackCurrentFrame < frameSum) {
-                        int j = 0; // total dLight weights up to current i;
-                        for (int k = 0; k < i; k++) {
-                            if (k < dLightStartImageWeights.length) { 
-                                j+= dLightStartImageWeights[k]; 
-                            } else {
-                                break;
-                            }
+                if (((Player)player).attackState == 1) { // dLight;
+                    if (!player.isAttacking && attack) { // dLightStart
+                        if (player.currentFrame >= 11) {
+                            player.isAttacking = true;
+                            player.timer = 0;
                         }
-                        if (attackCurrentFrame <= j && !player.isAttacking) {
-                            player.currentFrame = i;
-                            break;
-                        } else if (i <= dLightStartImage.length && !player.isAttacking) {
-                            i++;
-                        } else {
-                            break;
-                        }
-                    }
-
-                    if (attackCurrentFrame >= frameSum) { player.isAttacking = true; } 
-
-                    if (player.isAttacking) {
-                        if (isHitting()) {
-                            for (int a = 0; a < dLightHitImage.length-1; a++) {
-                                frameSum+= dLightHitImageWeights[a];
-                            }
-                        } else {
-                            for (int a = 0; a < dLightMissImage.length-1; a++) {
-                                frameSum+= dLightMissImageWeights[a];
-                            } 
-                        }
-
-                        i = 0; // current index being searched.
-                        while (attackCurrentFrame < frameSum) {
-                            int j = 0; // total dLight weights up to current i;
-                            for (int k = 0; k < i; k++) {
-                                if (isHitting() && k < dLightHitImageWeights.length) {
-                                    j+= dLightHitImageWeights[k];
-                                } else if (!isHitting() && k < dLightMissImageWeights.length) {
-                                    j+= dLightMissImageWeights[k];
-                                }
-                            }
-                            if (attackCurrentFrame <= j) {
-                                if (i < dLightMissImage.length) {
-                                    player.currentFrame = i;
-                                } else {
-                                    player.currentFrame = dLightMissImage.length-1;
-                                }
-                                break;
-                            } else if (i <= dLightMissImage.length) { 
-                                i++; 
-                            } else {
-                                break;
-                            }
-                        }
-
-                        if (attackCurrentFrame >= frameSum) { 
-                            attack = false; 
+                        player.duration = 0.5;
+                        player.currentFrame = (int)Math.floor(((player.timer%player.duration)/player.duration)*12);
+                    } 
+                    if (player.isAttacking && !isHitting() && attack) { // dLightMiss
+                        if (player.currentFrame >= 7) {
                             player.isAttacking = false;
+                            player.timer = 0;
+                            attack = false;
                         }
+                        player.duration = 0.3;
+                        player.currentFrame = (int)Math.floor(((player.timer%player.duration)/player.duration)*8);
                     }
-
-                    attackCurrentFrame++;
+                    if (player.isAttacking && isHitting() && attack) { // dLightMiss
+                        if (player.currentFrame >= 5) {
+                            player.isAttacking = false;
+                            player.timer = 0;
+                            attack = false;
+                        }
+                        player.duration = 0.3;
+                        player.currentFrame = (int)Math.floor(((player.timer % player.duration)/player.duration)*6);
+                    }
+                } else if (((Player)player).attackState == 2) { // sLight;
+                    if (player.currentFrame >= 23) {
+                        player.isAttacking = false;
+                        player.timer = 0;
+                        attack = false;
+                    }
+                    player.duration = 1.0;
+                    player.currentFrame = (int)Math.floor(((player.timer % player.duration)/player.duration)*24);
+                } else if (((Player)player).attackState == 3) { // sAir;
+                    if (player.currentFrame >= 19) {
+                        player.isAttacking = false;
+                        player.timer = 0;
+                        attack = false;
+                    }
+                    player.duration = 1.0;
+                    player.duration = 0.3;
+                    player.currentFrame = (int)Math.floor(((player.timer % player.duration)/player.duration)*20);
                 }
                 //player.currentFrame = 0; // DEBUG FOR TESTING IF CURRENT FRAME CODE ISN'T WORKING YET
                 break;
@@ -480,7 +455,7 @@ public class emnity extends GameEngine {
                 }
                 break;
             case 5:
-                if (!jump && down) { // dLight;
+                if (((Player)player).attackState == 1) { // dLight;
                     if (!player.isAttacking) {
                         if (player.direction >= 0) {
                             drawImage(dLightStartImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
@@ -500,13 +475,13 @@ public class emnity extends GameEngine {
                             drawImage(dLightMissImage[player.currentFrame], player.x, (player.y-player.height), -player.width, player.height);
                         } 
                     }
-                } else if (!jump && (left || right)) { // sLightImage;
+                } else if (((Player)player).attackState == 2) { // sLightImage;
                     if (player.direction >= 0) {
                         drawImage(sLightImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
                     } else {
                         drawImage(sLightImage[player.currentFrame], player.x, (player.y-player.height), -player.width, player.height);
                     }
-                } else if (jump && (left || right)) { // sAirImage;
+                } else if (((Player)player).attackState == 3) { // sAirImage;
                     if (player.direction >= 0) {
                         drawImage(sAirImage[player.currentFrame], (player.x-player.width), (player.y-player.height), player.width, player.height);
                     } else {
@@ -525,10 +500,10 @@ public class emnity extends GameEngine {
     /* --- ENEMY --- */
     ArrayList<Enemy> enemies = new ArrayList<>();
 
-    double enemyY = (GROUND-100.0);
+    double enemyY = (GROUND-150.0);
 
     public void initEnemy() {
-        enemies.add(new Enemy(30, 100, 1100.00, enemyY, 0.0, 0.0, 0.0, new Hitbox(0,0,0,0)));
+        enemies.add(new Enemy(30, 150, 1100.00, enemyY, 0.0, 0.0, 0.0, new Hitbox(1100.00,enemyY,30,150)));
         //enemies.add(new Moving(player.width, player.height, 300.00, enemyY, 75.00, 0, 2.0, 150.0, new Hitbox(0,0,0,0)));
         //enemies.add(new Following(player.width, player.height, 1500.00, enemyY, 200.00, 0));
     }
@@ -538,14 +513,18 @@ public class emnity extends GameEngine {
         for (Character e:enemies) {
             if (e.hp > 0) { 
                 drawRectangle(e.x+xPush, e.y, e.width, e.height); 
-            } else { e.hp = 0; }
+            } else { e.hp = 0; } // ensures the enemy's health is not negative.
+            if (debug) { 
+                changeColor(red);
+                drawRectangle(e.hitbox.x+xPush, e.hitbox.y, e.hitbox.width, e.hitbox.height);
+            }
         }
     }
 
     public void updateEnemy(double dt, Enemy e) {
         if (e.getClass().getName() == "Moving") {
                 // if the moving enemy reaches its maximum distance to the RIGHT, it waits for the waiting period before resuming.
-                if (e.x >= ((Moving)e).originalX+((Moving)e).maxDistance) {
+                if (e.hitbox.x >= ((Moving)e).originalX+((Moving)e).maxDistance) {
                     if (((Moving)e).waitTime < ((Moving)e).waitPeriod) {
                         e.direction = 0;
                         ((Moving)e).waitTime+= dt;
@@ -554,7 +533,7 @@ public class emnity extends GameEngine {
                         e.direction = -1;
                     }
                 // if the moving enemy reaches its maximum distance to the LEFT, it waits for the waiting period before resuming.
-                } else if (e.x <= ((Moving)e).originalX-((Moving)e).maxDistance) {
+                } else if (e.hitbox.x <= ((Moving)e).originalX-((Moving)e).maxDistance) {
                     if (((Moving)e).waitTime < ((Moving)e).waitPeriod) {
                         e.direction = 0;
                         ((Moving)e).waitTime+= dt;
@@ -565,25 +544,25 @@ public class emnity extends GameEngine {
                 }
             }
         // else if (e.getClass().getName() == "Following") {
-        //     double distance = e.x-player.x;
+        //     double distance = e.hitbox.x-player.hitbox.x;
         //     if (distance < 0) { 
         //         e.direction = 1;
         //     } else if (distance > 0) {
         //         e.direction = -1;
         //     }
         // }
-        if (e.direction > 0) { e.x+= e.vX*dt; }
-        else if (e.direction < 0) { e.x-= e.vX*dt; }
+        if (e.direction > 0) { e.hitbox.x+= e.vX*dt; }
+        else if (e.direction < 0) { e.hitbox.x-= e.vX*dt; }
             
-        if (checkCollision(e)) {
-            if (e.waitTime < e.waitPeriod) {
-                e.waitTime+= dt;
-            } else {
-                player.hp-= 0.00000001;
-                e.waitTime = 0;
-                e.newWaitPeriod();
-            }
-        }
+        // if (checkCollision(e)) {
+        //     if (e.waitTime < e.waitPeriod) {
+        //         e.waitTime+= dt;
+        //     } else {
+        //         player.hp-= 0.00000001;
+        //         e.waitTime = 0;
+        //         e.newWaitPeriod();
+        //     }
+        // }
     }
 
     /* --- HEALTH BAR --- */
@@ -615,36 +594,75 @@ public class emnity extends GameEngine {
         runImage[2] = (BufferedImage)(loadImage("sprites/run3.png"));
 
         dLightStartImage[0] = (BufferedImage)(loadImage("sprites/dlight0001.png"));
-        dLightStartImage[1] = (BufferedImage)(loadImage("sprites/dlight0003.png"));
-        dLightStartImage[2] = (BufferedImage)(loadImage("sprites/dlight0007.png"));
-        dLightStartImage[3] = (BufferedImage)(loadImage("sprites/dlight0009.png"));
-        dLightStartImage[4] = (BufferedImage)(loadImage("sprites/dlight0011.png"));
+        dLightStartImage[1] = dLightStartImage[0];
+        dLightStartImage[2] = (BufferedImage)(loadImage("sprites/dlight0003.png"));
+        dLightStartImage[3] = dLightStartImage[2];
+        dLightStartImage[4] = dLightStartImage[2];
+        dLightStartImage[5] = dLightStartImage[2];
+        dLightStartImage[6] = (BufferedImage)(loadImage("sprites/dlight0007.png"));
+        dLightStartImage[7] = dLightStartImage[6];
+        dLightStartImage[8] = (BufferedImage)(loadImage("sprites/dlight0009.png"));
+        dLightStartImage[9] = dLightStartImage[8];
+        dLightStartImage[10] = (BufferedImage)(loadImage("sprites/dlight0011.png"));
+        dLightStartImage[11] = dLightStartImage[10];
 
         dLightHitImage[0] = (BufferedImage)(loadImage("sprites/dLightHit0001.png"));
-        dLightHitImage[1] = (BufferedImage)(loadImage("sprites/dLightHit0003.png"));
-        dLightHitImage[2] = (BufferedImage)(loadImage("sprites/dLightHit0005.png"));
+        dLightHitImage[1] = dLightHitImage[0];
+        dLightHitImage[2] = (BufferedImage)(loadImage("sprites/dLightHit0003.png"));
+        dLightHitImage[3] = dLightHitImage[2];
+        dLightHitImage[4] = (BufferedImage)(loadImage("sprites/dLightHit0005.png"));
+        dLightHitImage[5] = dLightHitImage[4];
 
         dLightMissImage[0] = (BufferedImage)(loadImage("sprites/dLightMiss0001.png"));
-        dLightMissImage[1] = (BufferedImage)(loadImage("sprites/dLightMiss0005.png"));
-        dLightMissImage[2] = (BufferedImage)(loadImage("sprites/dLightMiss0007.png"));
+        dLightMissImage[1] = dLightMissImage[0];
+        dLightMissImage[2] = dLightMissImage[0];
+        dLightMissImage[3] = dLightMissImage[0];
+        dLightMissImage[4] = (BufferedImage)(loadImage("sprites/dLightMiss0005.png"));
+        dLightMissImage[5] = dLightMissImage[4];
+        dLightMissImage[6] = (BufferedImage)(loadImage("sprites/dLightMiss0007.png"));
+        dLightMissImage[7] = dLightMissImage[6];
 
         sAirImage[0] = (BufferedImage)(loadImage("sprites/sAir0001.png"));
-        sAirImage[1] = (BufferedImage)(loadImage("sprites/sAir0003.png"));
-        sAirImage[2] = (BufferedImage)(loadImage("sprites/sAir0005.png"));
-        sAirImage[3] = (BufferedImage)(loadImage("sprites/sAir0009.png"));
-        sAirImage[4] = (BufferedImage)(loadImage("sprites/sAir0011.png"));
-        sAirImage[5] = (BufferedImage)(loadImage("sprites/sAir0013.png"));
-        sAirImage[6] = (BufferedImage)(loadImage("sprites/sAir0015.png"));
+        sAirImage[1] = sAirImage[0];
+        sAirImage[2] = (BufferedImage)(loadImage("sprites/sAir0003.png"));
+        sAirImage[3] = sAirImage[2];
+        sAirImage[4] = (BufferedImage)(loadImage("sprites/sAir0005.png"));
+        sAirImage[5] = sAirImage[4];
+        sAirImage[6] = sAirImage[4];
+        sAirImage[7] = sAirImage[4];
+        sAirImage[8] = (BufferedImage)(loadImage("sprites/sAir0009.png"));
+        sAirImage[9] = sAirImage[8];
+        sAirImage[10] = (BufferedImage)(loadImage("sprites/sAir0011.png"));
+        sAirImage[11] = sAirImage[10];
+        sAirImage[12] = (BufferedImage)(loadImage("sprites/sAir0013.png"));
+        sAirImage[13] = sAirImage[12];
+        sAirImage[14] = (BufferedImage)(loadImage("sprites/sAir0015.png"));
+        sAirImage[15] = sAirImage[14];
 
         sLightImage[0] = (BufferedImage)(loadImage("sprites/sLight0001.png"));
-        sLightImage[1] = (BufferedImage)(loadImage("sprites/sLight0003.png"));
-        sLightImage[2] = (BufferedImage)(loadImage("sprites/sLight0007.png"));
-        sLightImage[3] = (BufferedImage)(loadImage("sprites/sLight0009.png"));
-        sLightImage[4] = (BufferedImage)(loadImage("sprites/sLight0011.png"));
-        sLightImage[5] = (BufferedImage)(loadImage("sprites/sLight0013.png"));
-        sLightImage[6] = (BufferedImage)(loadImage("sprites/sLight0017.png"));
-        sLightImage[7] = (BufferedImage)(loadImage("sprites/sLight0019.png"));
-        sLightImage[8] = (BufferedImage)(loadImage("sprites/sLight0023.png"));   
+        sLightImage[1] = sLightImage[0];
+        sLightImage[2] = (BufferedImage)(loadImage("sprites/sLight0003.png"));
+        sLightImage[3] = sLightImage[2];
+        sLightImage[4] = sLightImage[2];
+        sLightImage[5] = sLightImage[2];
+        sLightImage[6] = (BufferedImage)(loadImage("sprites/sLight0007.png"));
+        sLightImage[7] = sLightImage[6];
+        sLightImage[8] = (BufferedImage)(loadImage("sprites/sLight0009.png"));
+        sLightImage[9] = sLightImage[8];
+        sLightImage[10] = (BufferedImage)(loadImage("sprites/sLight0011.png"));
+        sLightImage[11] = sLightImage[10];
+        sLightImage[12] = (BufferedImage)(loadImage("sprites/sLight0013.png"));
+        sLightImage[13] = sLightImage[12];
+        sLightImage[14] = sLightImage[12];
+        sLightImage[15] = sLightImage[12];
+        sLightImage[16] = (BufferedImage)(loadImage("sprites/sLight0017.png"));
+        sLightImage[17] = sLightImage[16];
+        sLightImage[18] = (BufferedImage)(loadImage("sprites/sLight0019.png"));
+        sLightImage[19] = sLightImage[18];
+        sLightImage[20] = sLightImage[18];
+        sLightImage[21] = sLightImage[18];
+        sLightImage[22] = (BufferedImage)(loadImage("sprites/sLight0023.png"));
+        sLightImage[23] = sLightImage[22];   
     }
 
     @Override
@@ -674,6 +692,7 @@ public class emnity extends GameEngine {
         menu = false;
 
         player = new Player(150.0, 150.0, (double)(mWidth/2), GROUND, 0.0, 0.0, new Hitbox((double)(mWidth/2)-85.0,GROUND-135.0,25.0,135.0));
+        // new Hitbox((double)(mWidth/2)-85.0,GROUND-135.0,25.0,135.0)
 
         player.timer = 0; // reset player sprite timer.
         dashCooldown = 0; // reset dash cooldown.
@@ -714,11 +733,11 @@ public class emnity extends GameEngine {
         /* press TAB to see the debug menu */
         if (debug) {
             drawBoldText(5, 45, "player direction: " + player.direction + "");
-            drawBoldText(5, 90, "attackCurrentFrame: " + attackCurrentFrame + "");
+            drawBoldText(5, 90, "player.state: " + player.state);
             drawBoldText(5, 135, "player.currentFrame: " + player.currentFrame);
-            drawBoldText(5, 180, "player.hitbox.y+player.hitbox.height: " + (player.hitbox.y+player.hitbox.height) + "");
-            drawBoldText(5, 225, "GROUND: " + GROUND + "");
-            drawBoldText(5, 270, "dash? " + dash + "");
+            drawBoldText(5, 180, "isHitting(): " + isHitting() + "");
+            drawBoldText(5, 225, "player.hitbox.x: " + player.hitbox.x + "");
+            drawBoldText(5, 270, "enemies.get(0).hitbox.x+xPush: " + (enemies.get(0).hitbox.x+xPush) + "");
             //drawBoldText(5, 315, "enemy 0: " + enemies.get(0).waitPeriod + "");
             //drawBoldText(5, 360, "enemy 1: " + enemies.get(1).waitPeriod + "");
             if (menu) {
