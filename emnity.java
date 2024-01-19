@@ -1,7 +1,6 @@
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.nio.Buffer;
 import java.util.ArrayList;
 
 public class emnity extends GameEngine {
@@ -10,9 +9,9 @@ public class emnity extends GameEngine {
         createGame(new emnity(), 60);
     }
 
-    boolean space, left, right, down, shift, f, q;
+    boolean space, left, right, down, shift, q;
     boolean leftClick, rightClick;
-    boolean jump, dash, attack;
+    boolean jump, dash, attack, backDash;
 
     int jumpCount, dashCount;
 
@@ -212,7 +211,26 @@ public class emnity extends GameEngine {
             player.x = player.width;
         }
 
-        if (left && !attack) { 
+        if (dash) {
+            if (((left && player.direction > 0) || (right && player.direction < 0)) && dashCooldown <= 0.10) {
+                backDash = true;
+                if (left) { // facing right, going left;
+                    player.vX = -1300; 
+                    player.direction = 1;
+                }
+                else if (right) { // facing left, going right;
+                    player.vX = 1300; 
+                    player.direction = -1;
+                }
+            } else if (((left && player.direction > 0) || (right && player.direction < 0)) && dashCooldown > 0.10) { 
+                dash = false;
+                dashCooldown = 0.0;
+                player.state = 0;
+                player.vX = 0.0;
+            }
+        }
+
+        if (left && !attack && !backDash && !dash) { 
             player.direction = -1;
             if (player.vX >= -400.0) {
                 if (player.state != 1) { 
@@ -228,12 +246,12 @@ public class emnity extends GameEngine {
                 player.state = 2;
             }
             if (player.vX > 0) { player.vX-= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; } 
-            if (player.vX > -MAX_HORIZONTAL_VELOCITY) { 
+            if (player.vX > -MAX_HORIZONTAL_VELOCITY && ((Player)player).attackState != 2) { 
                 player.vX-= HORIZONTAL_ACCELERATION; 
             } 
             if (player.vX < -MAX_HORIZONTAL_VELOCITY && !dash) { player.vX = -MAX_HORIZONTAL_VELOCITY; }
-        } 
-        if (right && !attack) { 
+        }
+        if (right && !attack && !backDash && !dash) { 
             player.direction = 1;
             if (player.vX <= 400.0) {
                 if (player.state != 1) { 
@@ -249,14 +267,18 @@ public class emnity extends GameEngine {
                 player.state = 2;
             }
             if (player.vX < 0) { player.vX+= HORIZONTAL_ACCELERATION + HORIZONTAL_DECELERATION; } 
-            if (player.vX < MAX_HORIZONTAL_VELOCITY) { 
+            if (player.vX < MAX_HORIZONTAL_VELOCITY && ((Player)player).attackState != 2) { 
                 player.vX+= HORIZONTAL_ACCELERATION; 
             } 
             if (player.vX > MAX_HORIZONTAL_VELOCITY && !dash) { player.vX = MAX_HORIZONTAL_VELOCITY; }
         }
-        if (!left && !right) { 
-            if (player.vX < 0 && player.direction < 0) { player.vX+= HORIZONTAL_DECELERATION; } // left
-            if (player.vX > 0 && player.direction > 0) { player.vX-= HORIZONTAL_DECELERATION; } // right
+        if (!left && !right && !backDash && !dash) { 
+            if (player.vX < 0 && player.direction < 0) { player.vX+= HORIZONTAL_DECELERATION; } // left;
+            if (player.vX > 0 && player.direction > 0) { player.vX-= HORIZONTAL_DECELERATION; } // right;
+            if (((player.vX < 0 && player.direction > 0) || (player.vX > 0 && player.direction < 0)) && !backDash) { // after backDash, facing one way, going the other;
+                player.state = 2; 
+                player.vX = 0;
+            } 
             if (player.vX > -40 && player.vX < 40) { player.vX = 0; }
             if (player.vX == 0 && !attack) { 
                 if (player.state != 0) { 
@@ -267,7 +289,7 @@ public class emnity extends GameEngine {
             } // change state to idle if not doing anything;
         }
 
-        if (jump && !attack) { 
+        if (jump && !attack && ((Player)player).attackState != 3) { 
             if (player.state != 4) { 
                 player.timer = 0; 
                 player.currentFrame = 0;
@@ -277,30 +299,84 @@ public class emnity extends GameEngine {
         
         if (down) { player.vY+= GROUND_POUND_ACCELERATION; }
 
-        if (dash) {
-            dashCooldown+= dt;
+        if (dash || backDash) {
+            dashCooldown += dt;
             if (!attack) {
-                if (player.state != 3) { 
-                    player.timer = 0; 
+                if (player.state != 3) {
+                    player.timer = 0;
                     player.currentFrame = 0;
                 }
             }
             player.state = 3;
-            if (player.direction < 0) { // left
-                if (player.vX >= -MAX_HORIZONTAL_VELOCITY) { 
-                    dash = false;
-                    dashCooldown = 0; 
-                } else { 
-                    player.vX+= 50.0; 
+            if (backDash) {
+                if (player.direction < 0) { // facing left, going right;
+                    if (player.vX <= 0) {
+                        backDash = false;
+                        dash = false;
+                        dashCooldown = 0;
+                    } else {
+                        player.vX -= 150.0;
+                    }
+                } else if (player.direction > 0) { // facing right, going left;
+                    if (player.vX >= 0) {
+                        backDash = false;
+                        dash = false;
+                        dashCooldown = 0;
+                    } else {
+                        player.vX += 150.0;
+                    }
                 }
-            } else if (player.direction > 0) { // right
-                if (player.vX <= MAX_HORIZONTAL_VELOCITY) {
-                    dash = false;
-                    dashCooldown = 0;
-                } else {
-                    player.vX-= 50.0;
+            } else if (dash) {
+                if (player.direction < 0) { // left
+                    if (player.vX >= -MAX_HORIZONTAL_VELOCITY) {
+                        dash = false;
+                        dashCooldown = 0;
+                    } else {
+                        player.vX += 50.0;
+                    }
+                } else if (player.direction > 0) { // right
+                    if (player.vX <= MAX_HORIZONTAL_VELOCITY) {
+                        dash = false;
+                        dashCooldown = 0;
+                    } else {
+                        player.vX -= 50.0;
+                    }
                 }
             }
+        }
+
+        if (((Player)player).attackState == 2) { // sLight;
+            if (player.currentFrame < 8 || player.currentFrame >= 18) {
+                player.vX = 0.0;
+            } else if (player.currentFrame >= 16) {
+                if (player.direction < 0) {  // left;
+                    player.vX += 50.0;
+                } else if (player.direction > 0) { // right;
+                    player.vX -= 50.0;
+                }
+            } else {
+                if (player.direction < 0) { // left;
+                    player.vX -= 150.0;
+                } else if (player.direction > 0) { // right;
+                    player.vX += 150.0;
+                }
+            } 
+        } else if (((Player)player).attackState == 3) { // sAir;
+            if (player.currentFrame < 8 || player.currentFrame >= 14) {
+                player.vX = 0.0;
+            } else if (player.currentFrame >= 12) {
+                if (player.direction < 0) {  // left;
+                    player.vX += 50.0;
+                } else if (player.direction > 0) { // right;
+                    player.vX -= 50.0;
+                }
+            } else {
+                if (player.direction < 0) { // left;
+                    player.vX -= 150.0;
+                } else if (player.direction > 0) { // right;
+                    player.vX += 150.0;
+                }
+            } 
         }
 
         /* changing state to light attack on mouse click. */
@@ -340,7 +416,7 @@ public class emnity extends GameEngine {
                             player.isAttacking = true;
                             player.timer = 0;
                         }
-                        player.duration = 0.5;
+                        player.duration = 0.3;
                         player.currentFrame = (int)Math.floor(((player.timer%player.duration)/player.duration)*12);
                     } 
                     if (player.isAttacking && !isHitting() && attack) { // dLightMiss
@@ -348,6 +424,7 @@ public class emnity extends GameEngine {
                             player.isAttacking = false;
                             player.timer = 0;
                             attack = false;
+                            ((Player)player).attackState = 0;
                         }
                         player.duration = 0.3;
                         player.currentFrame = (int)Math.floor(((player.timer%player.duration)/player.duration)*8);
@@ -357,6 +434,7 @@ public class emnity extends GameEngine {
                             player.isAttacking = false;
                             player.timer = 0;
                             attack = false;
+                            ((Player)player).attackState = 0;
                         }
                         player.duration = 0.3;
                         player.currentFrame = (int)Math.floor(((player.timer % player.duration)/player.duration)*6);
@@ -366,17 +444,18 @@ public class emnity extends GameEngine {
                         player.isAttacking = false;
                         player.timer = 0;
                         attack = false;
+                        ((Player)player).attackState = 0;
                     }
-                    player.duration = 1.0;
+                    player.duration = 0.7;
                     player.currentFrame = (int)Math.floor(((player.timer % player.duration)/player.duration)*24);
                 } else if (((Player)player).attackState == 3) { // sAir;
                     if (player.currentFrame >= 19) {
                         player.isAttacking = false;
                         player.timer = 0;
                         attack = false;
+                        ((Player)player).attackState = 0;
                     }
-                    player.duration = 1.0;
-                    player.duration = 0.3;
+                    player.duration = 0.7;
                     player.currentFrame = (int)Math.floor(((player.timer % player.duration)/player.duration)*20);
                 }
                 //player.currentFrame = 0; // DEBUG FOR TESTING IF CURRENT FRAME CODE ISN'T WORKING YET
@@ -423,18 +502,17 @@ public class emnity extends GameEngine {
                 }
                 break;
             case 3: // dash;
-            /* if the player is accelerating, dashf.png is used. else, decelerating = dashb.png. */
                 if (player.direction >= 0) {
-                    if (playerv2X > 0) {
+                    if (!backDash) {
                         drawImage(dashImage[0], (player.x-player.width), (player.y-player.height), player.width, player.height);
                     } else {
                         drawImage(dashImage[1], (player.x-player.width), (player.y-player.height), player.width, player.height);
                     }
                 } else {
-                    if (playerv2X > 0) {
-                        drawImage(dashImage[1], player.x, (player.y-player.height), -player.width, player.height);
-                    } else {
+                    if (!backDash) {
                         drawImage(dashImage[0], player.x, (player.y-player.height), -player.width, player.height);
+                    } else {
+                        drawImage(dashImage[1], player.x, (player.y-player.height), -player.width, player.height);
                     }
                 }
                 break;
@@ -638,6 +716,10 @@ public class emnity extends GameEngine {
         sAirImage[13] = sAirImage[12];
         sAirImage[14] = (BufferedImage)(loadImage("sprites/sAir0015.png"));
         sAirImage[15] = sAirImage[14];
+        sAirImage[16] = sAirImage[14];
+        sAirImage[17] = sAirImage[14];
+        sAirImage[18] = sAirImage[14];
+        sAirImage[19] = sAirImage[14];
 
         sLightImage[0] = (BufferedImage)(loadImage("sprites/sLight0001.png"));
         sLightImage[1] = sLightImage[0];
@@ -675,13 +757,13 @@ public class emnity extends GameEngine {
         right = false;
         down = false;
         shift = false;
-        f = false;
         q = false;
         leftClick = false;
         rightClick = false;
 
         jump = false;
         dash = false;
+        backDash = false;
         attack = false;
         jumpCount = 0;
         dashCount = 0;
@@ -734,11 +816,11 @@ public class emnity extends GameEngine {
         if (debug) {
             drawBoldText(5, 45, "player direction: " + player.direction + "");
             drawBoldText(5, 90, "player.state: " + player.state);
-            drawBoldText(5, 135, "player.currentFrame: " + player.currentFrame);
-            drawBoldText(5, 180, "isHitting(): " + isHitting() + "");
-            drawBoldText(5, 225, "player.hitbox.x: " + player.hitbox.x + "");
-            drawBoldText(5, 270, "enemies.get(0).hitbox.x+xPush: " + (enemies.get(0).hitbox.x+xPush) + "");
-            //drawBoldText(5, 315, "enemy 0: " + enemies.get(0).waitPeriod + "");
+            drawBoldText(5, 135, "dash: " + dash);
+            drawBoldText(5, 180, "backDash: " + backDash + "");
+            drawBoldText(5, 225, "dashCooldown: " + dashCooldown + "");
+            drawBoldText(5, 270, "shift: " + shift + "");
+            drawBoldText(5, 315, "player.vX: " + player.vX + "");
             //drawBoldText(5, 360, "enemy 1: " + enemies.get(1).waitPeriod + "");
             if (menu) {
                 changeColor(red);
@@ -773,25 +855,27 @@ public class emnity extends GameEngine {
             }
             space = true;
         }
-        if (e.getKeyCode() == KeyEvent.VK_SHIFT || e.getKeyCode() == KeyEvent.VK_L) {
+        if (e.getKeyCode() == KeyEvent.VK_SHIFT || e.getKeyCode() == KeyEvent.VK_L) { 
             if (!shift) {
-                if ((jump && dashCount<1) || !jump) {
+                if ((jump && dashCount < 1) || !jump) {
                     if (!dash) {
                         dash = true;
-                        player.vX = 1300*player.direction;
+                        if (player.direction != 0) {
+                            player.vX = 1300 * player.direction;
+                        } else {
+                            player.vX = 1300;
+                            player.direction = 1;
+                        }
                     }
                     if (jump) {
                         dashCount++;
                     }
                 }
             }
-            shift = true;
+            shift = true; 
         }
         if (e.getKeyCode() == KeyEvent.VK_TAB) { debug = !debug; }  
-        // if (e.getKeyCode() == KeyEvent.VK_F) { 
-        //     f = true;
-        //     player.state = 4;
-        // }
+        if (e.getKeyCode() == KeyEvent.VK_F) { leftClick = true; } // alternative key for attack (left click).
         // if (e.getKeyCode() == KeyEvent.VK_Q) {
         //     q = true;
         //     player.state = 5;
@@ -805,7 +889,7 @@ public class emnity extends GameEngine {
         if (e.getKeyCode() == KeyEvent.VK_DOWN || e.getKeyCode() == KeyEvent.VK_S) { down = false; }
         if (e.getKeyCode() == KeyEvent.VK_SPACE || e.getKeyCode() == KeyEvent.VK_W) { space = false; }
         if (e.getKeyCode() == KeyEvent.VK_SHIFT || e.getKeyCode() == KeyEvent.VK_L) { shift = false; }
-        if (e.getKeyCode() == KeyEvent.VK_F) { f = false; }
+        if (e.getKeyCode() == KeyEvent.VK_F) { leftClick = false; }
         if (e.getKeyCode() == KeyEvent.VK_Q) { q = false; }
     }
 
