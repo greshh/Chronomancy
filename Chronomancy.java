@@ -3,10 +3,10 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 
-public class emnity extends GameEngine {
+public class Chronomancy extends GameEngine {
 
     public static void main(String args[]) {
-        createGame(new emnity(), 60);
+        createGame(new Chronomancy(), 60);
     }
 
     boolean space, left, right, down, shift, q;
