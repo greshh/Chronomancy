@@ -81,6 +81,8 @@ public class Chronomancy extends GameEngine {
     double lastvalue;
     double stepsX, stepsY;
 
+    ArrayList<Item> inventory = new ArrayList<>();
+
     // normal sprites.
     BufferedImage idleImage = (BufferedImage)(loadImage("sprites/idle.png"));
     BufferedImage[] walkImage = new BufferedImage[2];
@@ -106,6 +108,17 @@ public class Chronomancy extends GameEngine {
             return true;
         } else { 
             return false; 
+        }
+    }
+
+    public boolean checkCollision(Item item) {
+        if ((player.hitbox.y < item.y+item.height) 
+                && (player.hitbox.y+player.hitbox.height > item.y)
+                && (player.hitbox.x < item.x+item.width+xPush)
+                && (player.hitbox.x+player.hitbox.width > item.x+xPush)) {
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -613,6 +626,42 @@ public class Chronomancy extends GameEngine {
         drawRectangle(5, 60, healthBarW, healthBarH);
     }
 
+    /* --- ITEM & INVENTORY --- */
+    ArrayList<Item> availableItems = new ArrayList<>();
+
+    public void initItems() {
+        availableItems.add(new Item("Apple", "Yummy apple yum", 1000.0, 350.0, 20.0, 20.0));
+        availableItems.add(new Item("Watch", "You need to tell the time?", 200.0, 350.0, 20.0, 20.0));
+    }
+
+    public void drawItems() {
+        changeColor(green);
+        for (Item a:availableItems) {
+            drawCircle(a.x+xPush, a.y, a.width/2);
+        }
+    }
+
+    public void updateItems(double dt) {
+        boolean[] isCollected = new boolean[availableItems.size()];
+        for (int i = 0; i < availableItems.size(); i++) {
+            isCollected[i] = false;
+        }
+
+        for (int i = 0; i < availableItems.size(); i++) {
+            Item a = availableItems.get(i);
+            if (checkCollision(a)) {
+                inventory.add(a);
+                isCollected[i] = true;
+            }
+        }
+
+        for (int i = 0; i < availableItems.size(); i++) {
+            if (isCollected[i]) {
+                availableItems.remove(i);
+            }
+        }
+    }
+
     /* --- GAME --- */
 
     public void loadSprites() 
@@ -737,12 +786,14 @@ public class Chronomancy extends GameEngine {
         
         initEnemy();
         initPlatforms();
+        initItems();
     }
 
     @Override
     public void update(double dt) {
         if (!menu) { 
             updatePlayer(dt); 
+            updateItems(dt);
             for (Enemy e:enemies) {
                 updateEnemy(dt, e);
                 // if (checkCollision(e) && !e.isHit && attack) { 
@@ -765,13 +816,15 @@ public class Chronomancy extends GameEngine {
         drawPlatforms();
         drawEnemy();
         drawHealthBar();
+        drawItems();
 
+        changeColor(white);
         drawLine(0, GROUND, mWidth, GROUND); // DEBUG;
 
         /* press TAB to see the debug menu */
         if (debug) {
-            drawBoldText(5, 45, "player direction: " + player.direction + "");
-            drawBoldText(5, 90, "player.state: " + player.state);
+            drawBoldText(5, 45, "player x: " + player.x + "");
+            drawBoldText(5, 90, "GROUND: " + GROUND);
             drawBoldText(5, 135, "dash: " + dash);
             drawBoldText(5, 270, "shift: " + shift + "");
             drawBoldText(5, 315, "player.vX: " + player.vX + "");
