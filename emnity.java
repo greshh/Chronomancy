@@ -11,7 +11,7 @@ public class emnity extends GameEngine {
 
     boolean space, left, right, down, shift, q;
     boolean leftClick, rightClick;
-    boolean jump, dash, attack, backDash;
+    boolean jump, dash, attack;
 
     int jumpCount, dashCount;
 
@@ -80,8 +80,6 @@ public class emnity extends GameEngine {
 
     double lastvalue;
     double stepsX, stepsY;
-
-    double dashCooldown; // enables backwards dash.
 
     // normal sprites.
     BufferedImage idleImage = (BufferedImage)(loadImage("sprites/idle.png"));
@@ -212,25 +210,14 @@ public class emnity extends GameEngine {
         }
 
         if (dash) {
-            if (((left && player.direction > 0) || (right && player.direction < 0)) && dashCooldown <= 0.10) {
-                backDash = true;
-                if (left) { // facing right, going left;
-                    player.vX = -1300; 
-                    player.direction = 1;
-                }
-                else if (right) { // facing left, going right;
-                    player.vX = 1300; 
-                    player.direction = -1;
-                }
-            } else if (((left && player.direction > 0) || (right && player.direction < 0)) && dashCooldown > 0.10) { 
+            if ((left && player.direction > 0) || (right && player.direction < 0)) { 
                 dash = false;
-                dashCooldown = 0.0;
                 player.state = 0;
                 player.vX = 0.0;
             }
         }
 
-        if (left && !attack && !backDash && !dash) { 
+        if (left && !attack && !dash) { 
             player.direction = -1;
             if (player.vX >= -400.0) {
                 if (player.state != 1) { 
@@ -251,7 +238,7 @@ public class emnity extends GameEngine {
             } 
             if (player.vX < -MAX_HORIZONTAL_VELOCITY && !dash) { player.vX = -MAX_HORIZONTAL_VELOCITY; }
         }
-        if (right && !attack && !backDash && !dash) { 
+        if (right && !attack && !dash) { 
             player.direction = 1;
             if (player.vX <= 400.0) {
                 if (player.state != 1) { 
@@ -272,13 +259,13 @@ public class emnity extends GameEngine {
             } 
             if (player.vX > MAX_HORIZONTAL_VELOCITY && !dash) { player.vX = MAX_HORIZONTAL_VELOCITY; }
         }
-        if (!left && !right && !backDash && !dash) { 
+        if (!left && !right && !dash) { 
             if (player.vX < 0 && player.direction < 0) { player.vX+= HORIZONTAL_DECELERATION; } // left;
             if (player.vX > 0 && player.direction > 0) { player.vX-= HORIZONTAL_DECELERATION; } // right;
-            if (((player.vX < 0 && player.direction > 0) || (player.vX > 0 && player.direction < 0)) && !backDash) { // after backDash, facing one way, going the other;
-                player.state = 2; 
-                player.vX = 0;
-            } 
+            // if (((player.vX < 0 && player.direction > 0) || (player.vX > 0 && player.direction < 0))) { // after backDash, facing one way, going the other;
+            //     player.state = 2; 
+            //     player.vX = 0;
+            // } 
             if (player.vX > -40 && player.vX < 40) { player.vX = 0; }
             if (player.vX == 0 && !attack) { 
                 if (player.state != 0) { 
@@ -299,8 +286,7 @@ public class emnity extends GameEngine {
         
         if (down) { player.vY+= GROUND_POUND_ACCELERATION; }
 
-        if (dash || backDash) {
-            dashCooldown += dt;
+        if (dash) {
             if (!attack) {
                 if (player.state != 3) {
                     player.timer = 0;
@@ -308,36 +294,16 @@ public class emnity extends GameEngine {
                 }
             }
             player.state = 3;
-            if (backDash) {
-                if (player.direction < 0) { // facing left, going right;
-                    if (player.vX <= 0) {
-                        backDash = false;
-                        dash = false;
-                        dashCooldown = 0;
-                    } else {
-                        player.vX -= 150.0;
-                    }
-                } else if (player.direction > 0) { // facing right, going left;
-                    if (player.vX >= 0) {
-                        backDash = false;
-                        dash = false;
-                        dashCooldown = 0;
-                    } else {
-                        player.vX += 150.0;
-                    }
-                }
-            } else if (dash) {
+            if (dash) {
                 if (player.direction < 0) { // left
                     if (player.vX >= -MAX_HORIZONTAL_VELOCITY) {
                         dash = false;
-                        dashCooldown = 0;
                     } else {
                         player.vX += 50.0;
                     }
                 } else if (player.direction > 0) { // right
                     if (player.vX <= MAX_HORIZONTAL_VELOCITY) {
                         dash = false;
-                        dashCooldown = 0;
                     } else {
                         player.vX -= 50.0;
                     }
@@ -503,17 +469,9 @@ public class emnity extends GameEngine {
                 break;
             case 3: // dash;
                 if (player.direction >= 0) {
-                    if (!backDash) {
-                        drawImage(dashImage[0], (player.x-player.width), (player.y-player.height), player.width, player.height);
-                    } else {
-                        drawImage(dashImage[1], (player.x-player.width), (player.y-player.height), player.width, player.height);
-                    }
+                    drawImage(dashImage[0], (player.x-player.width), (player.y-player.height), player.width, player.height);
                 } else {
-                    if (!backDash) {
-                        drawImage(dashImage[0], player.x, (player.y-player.height), -player.width, player.height);
-                    } else {
-                        drawImage(dashImage[1], player.x, (player.y-player.height), -player.width, player.height);
-                    }
+                    drawImage(dashImage[0], player.x, (player.y-player.height), -player.width, player.height);
                 }
                 break;
             case 4: // jump/land;
@@ -763,7 +721,6 @@ public class emnity extends GameEngine {
 
         jump = false;
         dash = false;
-        backDash = false;
         attack = false;
         jumpCount = 0;
         dashCount = 0;
@@ -777,7 +734,6 @@ public class emnity extends GameEngine {
         // new Hitbox((double)(mWidth/2)-85.0,GROUND-135.0,25.0,135.0)
 
         player.timer = 0; // reset player sprite timer.
-        dashCooldown = 0; // reset dash cooldown.
         
         initEnemy();
         initPlatforms();
@@ -817,8 +773,6 @@ public class emnity extends GameEngine {
             drawBoldText(5, 45, "player direction: " + player.direction + "");
             drawBoldText(5, 90, "player.state: " + player.state);
             drawBoldText(5, 135, "dash: " + dash);
-            drawBoldText(5, 180, "backDash: " + backDash + "");
-            drawBoldText(5, 225, "dashCooldown: " + dashCooldown + "");
             drawBoldText(5, 270, "shift: " + shift + "");
             drawBoldText(5, 315, "player.vX: " + player.vX + "");
             //drawBoldText(5, 360, "enemy 1: " + enemies.get(1).waitPeriod + "");
