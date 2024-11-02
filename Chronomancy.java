@@ -546,10 +546,26 @@ public class Chronomancy extends GameEngine {
         if (debug) { drawRectangle(player.hitbox.x, player.hitbox.y, player.hitbox.width, player.hitbox.height); }
     }
 
+    /* --- NPC --- */
+    ArrayList<NPC> npcs = new ArrayList<>();
+
+    double npcY = GROUND-150.0;
+
+    public void initNPCs() {
+        npcs.add(new NPC(30, 150, 1500.0, npcY, 0.0, 0.0, new Hitbox(30, 150, 1500.0, npcY)));
+    }
+
+    public void drawNPCs() {
+        changeColor(blue);
+        for (NPC n:npcs) {
+            drawRectangle(n.x+xPush, n.y, n.width, n.height);
+        }
+    }
+
     /* --- ENEMY --- */
     ArrayList<Enemy> enemies = new ArrayList<>();
 
-    double enemyY = (GROUND-150.0);
+    double enemyY = GROUND-150.0;
 
     public void initEnemy() {
         enemies.add(new Enemy(30, 150, 1100.00, enemyY, 0.0, 0.0, 0.0, new Hitbox(1100.00,enemyY,30,150)));
@@ -558,13 +574,13 @@ public class Chronomancy extends GameEngine {
     }
 
     public void drawEnemy() {
-        changeColor(white);
+        changeColor(orange);
         for (Character e:enemies) {
             if (e.hp > 0) { 
                 drawRectangle(e.x+xPush, e.y, e.width, e.height); 
             } else { e.hp = 0; } // ensures the enemy's health is not negative.
             if (debug) { 
-                changeColor(red);
+                changeColor(white);
                 drawRectangle(e.hitbox.x+xPush, e.hitbox.y, e.hitbox.width, e.hitbox.height);
             }
         }
@@ -785,6 +801,7 @@ public class Chronomancy extends GameEngine {
         player.timer = 0; // reset player sprite timer.
         
         initEnemy();
+        initNPCs();
         initPlatforms();
         initItems();
     }
@@ -815,6 +832,7 @@ public class Chronomancy extends GameEngine {
         drawPlayer();
         drawPlatforms();
         drawEnemy();
+        drawNPCs();
         drawHealthBar();
         drawItems();
 
